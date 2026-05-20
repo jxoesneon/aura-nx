@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkdocs_site=self.webpackChunkdocs_site||[]).push([["3220"],{1912(s){s.exports=JSON.parse('{"blogBasePath":"/aura-nx/blog","blogTitle":"Blog","authorsListPath":"/aura-nx/blog/authors"}')}}]);
