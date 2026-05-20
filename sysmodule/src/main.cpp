@@ -12,6 +12,7 @@
 #include "capture.h"
 #include "crash_monitor.h"
 #include "save_manager.h"
+#include "input_injector.h"
 
 extern "C" {
     u32 __nx_applet_type = AppletType_None;
@@ -58,6 +59,16 @@ void extractJsonString(const char* json, const char* key, char* out, size_t out_
     if (len >= out_len) len = out_len - 1;
     strncpy(out, start, len);
     out[len] = '\0';
+}
+
+long long extractJsonNumber(const char* json, const char* key) {
+    char search_key[64];
+    snprintf(search_key, sizeof(search_key), "\"%s\":", key);
+    const char* start = strstr(json, search_key);
+    if (!start) return 0;
+    start += strlen(search_key);
+    while (*start == ' ' || *start == ':' || *start == '"') start++;
+    return atoll(start);
 }
 
 void handleRequest(int client_fd, u32 nv_fd) {
@@ -111,6 +122,12 @@ void handleRequest(int client_fd, u32 nv_fd) {
         bool success = handleRestoreSave(name[0] ? name : "default");
         char response[256];
         snprintf(response, sizeof(response), "{\"jsonrpc\":\"2.0\",\"result\":\"Restore %s\",\"id\":1}\n", success ? "success" : "failed");
+        send(client_fd, response, strlen(response), 0);
+    } else if (strstr(buffer, "\"method\":\"inject_input\"")) {
+        u64 buttons = (u64)extractJsonNumber(buffer, "buttons");
+        int duration = (int)extractJsonNumber(buffer, "duration");
+        injectInput(buttons, duration);
+        const char* response = "{\"jsonrpc\":\"2.0\",\"result\":\"Input injected\",\"id\":1}\n";
         send(client_fd, response, strlen(response), 0);
     }
 }

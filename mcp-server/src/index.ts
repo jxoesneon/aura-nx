@@ -8,6 +8,7 @@ import * as net from "net";
 import * as fs from "fs";
 import * as path from "path";
 import * as dgram from "dgram";
+import { WebSocketServer } from "ws";
 
 import { startDiscoveryListener } from "./discovery";
 import { handleCaptureScreen } from "./capture";
@@ -21,6 +22,7 @@ const GDB_PORT = 22225;
 const SYSMODULE_PORT = 12346;
 const ASSET_SERVER_PORT = 12347;
 const ASSET_RELOAD_PORT = 12348;
+const WS_PORT = 8081;
 
 const server = new Server(
   {
@@ -185,6 +187,38 @@ async function sendReloadSignal(assetPath: string): Promise<void> {
   });
 }
 
+/**
+ * WebSocket Telemetry Server
+ */
+const wss = new WebSocketServer({ port: WS_PORT });
+
+wss.on("connection", (ws) => {
+  console.error("Dashboard connected to telemetry");
+});
+
+setInterval(async () => {
+  try {
+    const gpuLoad = await fetchGpuLoad().catch(() => 0);
+    const telemetry = {
+      type: "telemetry",
+      deviceIp: DEVICE_IP,
+      gpuLoad,
+      logs: nxLogBuffer,
+    };
+    
+    const message = JSON.stringify(telemetry);
+    wss.clients.forEach((client) => {
+      if (client.readyState === 1) { // OPEN
+        client.send(message);
+      }
+    });
+    
+    nxLogBuffer = ""; // Clear logs after broadcast to avoid duplicates
+  } catch (error) {
+    // Ignore errors during broadcast
+  }
+}, 1000);
+
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
@@ -246,10 +280,81 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           },
           required: ["name"],
         },
+      },
+      {
+        name: "send_input",
+        description: "Inject a button press into the system.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            button: { type: "string", description: "Button to press (e.g., 'A', 'B', 'X', 'Y', 'L', 'R', 'ZL', 'ZR', 'Plus', 'Minus', 'Left', 'Up', 'Right', 'Down')." },
+            duration: { type: "number", description: "Duration to hold the button in milliseconds." },
+          },
+          required: ["button", "duration"],
+        },
       }
     ],
   };
 });
+
+async function injectInput(button: string, duration: number): Promise<string> {
+  const buttonMap: { [key: string]: string } = {
+    "A": (1n << 0n).toString(),
+    "B": (1n << 1n).toString(),
+    "X": (1n << 2n).toString(),
+    "Y": (1n << 3n).toString(),
+    "StickL": (1n << 4n).toString(),
+    "StickR": (1n << 5n).toString(),
+    "L": (1n << 6n).toString(),
+    "R": (1n << 7n).toString(),
+    "ZL": (1n << 8n).toString(),
+    "ZR": (1n << 9n).toString(),
+    "Plus": (1n << 10n).toString(),
+    "Minus": (1n << 11n).toString(),
+    "Left": (1n << 12n).toString(),
+    "Up": (1n << 13n).toString(),
+    "Right": (1n << 14n).toString(),
+    "Down": (1n << 15n).toString(),
+  };
+
+  const buttonValue = buttonMap[button];
+  if (!buttonValue) {
+    throw new Error(`Unknown button: ${button}`);
+  }
+
+  return new Promise((resolve, reject) => {
+    const client = new net.Socket();
+    let dataReceived = "";
+
+    client.setTimeout(3000);
+    client.connect(SYSMODULE_PORT, DEVICE_IP, () => {
+      client.write(JSON.stringify({ 
+        method: "inject_input", 
+        params: { buttons: buttonValue, duration: duration },
+        id: 1 
+      }));
+    });
+
+    client.on("data", (data) => {
+      dataReceived += data.toString();
+      try {
+        const response = JSON.parse(dataReceived);
+        resolve(response.result ?? "Input injected");
+        client.destroy();
+      } catch (e) {
+      }
+    });
+
+    client.on("timeout", () => {
+      client.destroy();
+      reject(new Error(`Timeout at ${DEVICE_IP}`));
+    });
+
+    client.on("error", (err: any) => {
+      reject(err);
+    });
+  });
+}
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   switch (request.params.name) {
@@ -306,6 +411,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       try {
         const name = request.params.arguments?.name as string;
         const res = await restoreSave(DEVICE_IP, name);
+        return { content: [{ type: "text", text: res }] };
+      } catch (error: any) {
+        return { isError: true, content: [{ type: "text", text: `Error: ${error.message}` }] };
+      }
+
+    case "send_input":
+      try {
+        const button = request.params.arguments?.button as string;
+        const duration = request.params.arguments?.duration as number;
+        const res = await injectInput(button, duration);
         return { content: [{ type: "text", text: res }] };
       } catch (error: any) {
         return { isError: true, content: [{ type: "text", text: `Error: ${error.message}` }] };
