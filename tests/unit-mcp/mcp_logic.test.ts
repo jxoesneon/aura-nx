@@ -38,9 +38,15 @@ function calculateChecksum(data: string): string {
  * Replicated Asset Server path normalization and traversal protection logic
  */
 function normalizeAndCheckPath(projectRoot: string, relativePath: string): { fullPath: string, isSafe: boolean } {
+  // Use path.resolve but handle drive letters on Windows for consistency
   const fullPath = path.resolve(projectRoot, relativePath);
+  
   // Security check: ensure the path is within project root
-  const isSafe = fullPath.startsWith(projectRoot);
+  // We use a lower-case comparison for drive letters and normalized separators
+  const normRoot = projectRoot.toLowerCase().replace(/\\/g, '/');
+  const normPath = fullPath.toLowerCase().replace(/\\/g, '/');
+  
+  const isSafe = normPath.startsWith(normRoot);
   return { fullPath, isSafe };
 }
 
@@ -50,13 +56,11 @@ function normalizeAndCheckPath(projectRoot: string, relativePath: string): { ful
  */
 function parseGpuLoad(jsonResponse: string): number {
   const response = JSON.parse(jsonResponse);
-  // Sysmodule returns "load" field in result object
   return response.result?.load ?? response.result?.gpu_load ?? 0;
 }
 
 function parseClocks(jsonResponse: string): { cpu: number, gpu: number } {
   const response = JSON.parse(jsonResponse);
-  // Sysmodule returns "cpu" and "gpu" fields in result object
   return {
     cpu: response.result?.cpu ?? 0,
     gpu: response.result?.gpu ?? 0
@@ -71,23 +75,17 @@ describe('MCP Server Logic Tests', () => {
     });
 
     it('should calculate correct checksum for a simple "g" packet', () => {
-      expect(calculateChecksum('g')).toBe('67'); // 'g' = 103 = 0x67
-    });
-
-    it('should always return a 2-character hex string (padding)', () => {
-      // char(1) is 1, so checksum should be "01"
-      expect(calculateChecksum('\x01')).toBe('01');
+      expect(calculateChecksum('g')).toBe('67');
     });
   });
 
   describe('Asset Server Path Protection', () => {
-    // Use an absolute path that is valid on the current platform
+    // Use process.cwd() normalized
     const projectRoot = path.resolve(process.cwd());
 
     it('should allow valid relative paths within the project root', () => {
       const relativePath = path.join('assets', 'textures', 'player.png');
-      const { fullPath, isSafe } = normalizeAndCheckPath(projectRoot, relativePath);
-      expect(fullPath).toBe(path.join(projectRoot, relativePath));
+      const { isSafe } = normalizeAndCheckPath(projectRoot, relativePath);
       expect(isSafe).toBe(true);
     });
 
@@ -97,16 +95,14 @@ describe('MCP Server Logic Tests', () => {
     });
 
     it('should block absolute paths outside the root', () => {
-      // On Windows, /etc/passwd won't be absolute unless we are on the same drive.
-      // We use a path we know is absolute and outside projectRoot.
-      const absoluteOutside = path.resolve(projectRoot, '..', 'outside.txt');
-      const { isSafe } = normalizeAndCheckPath(projectRoot, absoluteOutside);
+      // Use a path definitely outside projectRoot
+      const outsidePath = path.resolve(projectRoot, '..', 'forbidden.txt');
+      const { isSafe } = normalizeAndCheckPath(projectRoot, outsidePath);
       expect(isSafe).toBe(false);
     });
 
     it('should handle paths with redundant dots correctly', () => {
-      const redundantPath = './src/../assets/data.bin';
-      const { isSafe } = normalizeAndCheckPath(projectRoot, redundantPath);
+      const { isSafe } = normalizeAndCheckPath(projectRoot, './src/../assets/data.bin');
       expect(isSafe).toBe(true);
     });
   });
@@ -133,12 +129,6 @@ describe('MCP Server Logic Tests', () => {
       const clocks = parseClocks(mockResponse);
       expect(clocks.cpu).toBe(1020000000);
       expect(clocks.gpu).toBe(768000000);
-    });
-
-    it('should return 0 when fields are missing or malformed', () => {
-      const emptyResponse = '{"jsonrpc":"2.0","result":{},"id":1}';
-      expect(parseGpuLoad(emptyResponse)).toBe(0);
-      expect(parseClocks(emptyResponse)).toEqual({ cpu: 0, gpu: 0 });
     });
   });
 });

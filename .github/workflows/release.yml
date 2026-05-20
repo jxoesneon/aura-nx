@@ -38,7 +38,7 @@ jobs:
           mkdir -p binaries
           # Building for Windows, macOS, and Linux (x64 and arm64)
           npx pkg dist/index.js \
-            --targets node20-linux-x64,node20-linux-arm64,node20-win-x64,node20-win-arm64,node20-macos-x64,node20-macos-arm64 \
+            --targets node18-linux-x64,node18-linux-arm64,node18-win-x64,node18-win-arm64,node18-macos-x64,node18-macos-arm64 \
             --out-path binaries/
 
       - name: Rename binaries for release

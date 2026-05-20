@@ -124,6 +124,9 @@ $(OUTPUT).nro	:	$(OUTPUT).elf
 endif
 
 $(OUTPUT).elf	:	$(OFILES)
+	@echo linking $(notdir $@)
+	@$(CXX) $(LDFLAGS) $(OFILES) $(LIBS) -o $@
+
 
 #---------------------------------------------------------------------------------
 # recipes for compiling

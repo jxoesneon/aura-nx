@@ -87,11 +87,11 @@ void handleRequest(int client_fd, u32 nv_fd) {
     } else if (strstr(buffer, "\"method\":\"get_clocks\"")) {
         u32 cpu_hz = 0, gpu_hz = 0;
         ClkrstSession session;
-        if (R_SUCCEEDED(clkrstOpenSession(&session, PcvModuleId_CpuBus, 3))) {
+        if (R_SUCCEEDED(clkrstOpenSession(&session, (PcvModuleId)PcvModule_CpuBus, 3))) {
             clkrstGetClockRate(&session, &cpu_hz);
             clkrstCloseSession(&session);
         }
-        if (R_SUCCEEDED(clkrstOpenSession(&session, PcvModuleId_GPU, 3))) {
+        if (R_SUCCEEDED(clkrstOpenSession(&session, (PcvModuleId)PcvModule_GPU, 3))) {
             clkrstGetClockRate(&session, &gpu_hz);
             clkrstCloseSession(&session);
         }
