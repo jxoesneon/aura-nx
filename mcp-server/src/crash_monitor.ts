@@ -1,5 +1,5 @@
 import * as net from "net";
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -29,9 +29,7 @@ export function startCrashMonitor() {
         fs.writeFileSync(dumpPath, crashData);
         console.error(`[crash-monitor] Dump saved to ${dumpPath}`);
 
-        // Attempt to symbolicate if aarch64-none-elf-addr2line is available
-        // In a real scenario, we'd extract the PC/LR from the dump.
-        // For this implementation, we simulate the symbolication log.
+        // Attempt to symbolicate
         symbolicate(dumpPath);
       }
     });
@@ -53,14 +51,12 @@ function symbolicate(dumpPath: string) {
   // Mock symbolication logic
   console.error("[crash-monitor] Symbolication Report:");
   console.error("  Thread: Main (ID 0x100)");
-  console.error("  Exception: Instruction Abort (0x100)");
   
-  // Example of how we would call addr2line if we had a valid ELF and addresses
   const mockAddress = "0x7100012345";
-  const elfPath = "aura_sysmodule.elf";
+  const elfPath = path.join(process.cwd(), "aura_sysmodule.elf");
 
   if (fs.existsSync(elfPath)) {
-    exec(`aarch64-none-elf-addr2line -e ${elfPath} -f -C ${mockAddress}`, (error, stdout, stderr) => {
+    execFile("aarch64-none-elf-addr2line", ["-e", elfPath, "-f", "-C", mockAddress], (error, stdout, stderr) => {
       if (error) {
         console.error(`[crash-monitor] addr2line error: ${error.message}`);
         return;

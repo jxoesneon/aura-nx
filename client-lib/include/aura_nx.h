@@ -14,9 +14,10 @@ extern "C" {
 
 /**
  * @brief Initializes the Aura-NX client library and registers the net:/ VFS.
+ * @param pc_ip The LAN IP address of the PC running the Aura-NX MCP server.
  * @return Result 0 on success, or an error code.
  */
-Result auraNxInit();
+Result auraNxInit(const char* pc_ip);
 
 /**
  * @brief Updates the Aura-NX client state. Should be called periodically.

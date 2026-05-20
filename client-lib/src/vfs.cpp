@@ -36,7 +36,7 @@ static int net_open(struct _reent *r, void *fileStruct, const char *path, int fl
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(MCP_SERVER_PORT);
-    serv_addr.sin_addr.s_addr = inet_addr(DEFAULT_PC_IP);
+    serv_addr.sin_addr.s_addr = inet_addr(g_pc_ip);
     
     if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
         close(sock);
@@ -140,7 +140,12 @@ static const devoptab_t net_devoptab = {
     NULL, // utimes_r
 };
 
-Result auraNxInit() {
+static char g_pc_ip[64] = "127.0.0.1";
+
+Result auraNxInit(const char* pc_ip) {
+    if (pc_ip) {
+        strncpy(g_pc_ip, pc_ip, sizeof(g_pc_ip) - 1);
+    }
     // Register the device
     int dev = AddDevice(&net_devoptab);
     if (dev < 0) return -1;

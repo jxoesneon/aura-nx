@@ -144,20 +144,38 @@ int main(int argc, char* argv[]) {
     // Start auto-discovery broadcast
     startDiscoveryBroadcast();
 
-    int server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_fd < 0) while (true) svcSleepThread(1000000000ULL);
+    // Set up the TCP server on port 12346 with retry logic
+    int server_fd = -1;
+    while (server_fd < 0) {
+        server_fd = socket(AF_INET, SOCK_STREAM, 0);
+        if (server_fd < 0) {
+            svcSleepThread(5000000000ULL); // Retry every 5s
+            continue;
+        }
 
-    int opt = 1;
-    setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+        int opt = 1;
+        setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
-    struct sockaddr_in address;
-    memset(&address, 0, sizeof(address));
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(12346);
+        struct sockaddr_in address;
+        memset(&address, 0, sizeof(address));
+        address.sin_family = AF_INET;
+        address.sin_addr.s_addr = INADDR_ANY;
+        address.sin_port = htons(12346);
 
-    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) while (true) svcSleepThread(1000000000ULL);
-    if (listen(server_fd, 5) < 0) while (true) svcSleepThread(1000000000ULL);
+        if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
+            close(server_fd);
+            server_fd = -1;
+            svcSleepThread(5000000000ULL);
+            continue;
+        }
+        
+        if (listen(server_fd, 5) < 0) {
+            close(server_fd);
+            server_fd = -1;
+            svcSleepThread(5000000000ULL);
+            continue;
+        }
+    }
 
     int flags = fcntl(server_fd, F_GETFL, 0);
     fcntl(server_fd, F_SETFL, flags | O_NONBLOCK);
