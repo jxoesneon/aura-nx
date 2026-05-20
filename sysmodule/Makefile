@@ -114,7 +114,7 @@ all	:	$(OUTPUT).nsp
 
 $(OUTPUT).nsp	:	$(OUTPUT).nso $(TOPDIR)/template.npdm
 	@echo built ... $(notdir $@)
-	@build_nsp $(OUTPUT).nso $(TOPDIR)/template.npdm $@
+	@$(DEVKITPRO)/tools/bin/build_nsp $(OUTPUT).nso $(TOPDIR)/template.npdm $@
 
 $(OUTPUT).nso	:	$(OUTPUT).elf
 else

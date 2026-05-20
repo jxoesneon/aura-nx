@@ -7,18 +7,16 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 
 /**
  * Aura-NX E2E Integration Test Suite
- * This suite verifies the MCP server's ability to handle low-level TCP protocols
- * (nxlink and VFS Asset Server) and expose their state via MCP tools.
  */
 describe('Aura-NX E2E Integration Tests', () => {
   let client: Client;
 
   beforeAll(async () => {
-    // Initialize the MCP Client to communicate with the local server
+    // Initialize the MCP Client
     const transport = new StdioClientTransport({
       command: "npx",
       args: ["ts-node", "mcp-server/src/index.ts"],
-      env: { ...process.env, AURA_DEVICE_IP: "127.0.0.1" }
+      env: { ...process.env, AURA_DEVICE_IP: "127.0.0.1", WS_PORT: "0" }
     });
 
     client = new Client({
@@ -29,7 +27,7 @@ describe('Aura-NX E2E Integration Tests', () => {
     });
 
     await client.connect(transport);
-  });
+  }, 30000); // 30s timeout for server startup
 
   afterAll(async () => {
     await client.close();
