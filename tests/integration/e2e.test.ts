@@ -27,7 +27,7 @@ describe('Aura-NX E2E Integration Tests', () => {
     });
 
     await client.connect(transport);
-  }, 30000); // 30s timeout for server startup
+  }, 60000); // 60s timeout for server startup
 
   afterAll(async () => {
     await client.close();

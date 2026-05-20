@@ -2,15 +2,22 @@
 #include <cstdio>
 
 int main(int argc, char* argv[]) {
+    // Initialize standard HID
+    padConfigureDefault();
+    PadState pad;
+    padInitializeDefault(&pad);
+
     consoleInit(NULL);
     printf("Aura NX Companion App\n");
     printf("Status: Running\n");
     printf("Press PLUS to exit.\n");
 
     while (appletMainLoop()) {
-        hidScanInput();
-        u64 kDown = hidKeysDown(CONTROLLER_P1_AUTO);
-        if (kDown & KEY_PLUS) break;
+        padUpdate(&pad);
+        u64 kDown = padGetButtonsDown(&pad);
+
+        if (kDown & HidNpadButton_Plus) break;
+        
         consoleUpdate(NULL);
     }
 
