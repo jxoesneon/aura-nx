@@ -67,20 +67,21 @@ jobs:
       - name: Prepare build environment
         run: |
           apt-get update && apt-get install -y make
-          # Search for the tool
-          NSP_TOOL=$(find /opt/devkitpro -name build_nsp | head -n 1)
-          if [ -z "$NSP_TOOL" ]; then
-            NSP_TOOL=$(find /opt/devkitpro -name nx-builder | head -n 1)
-          fi
-          echo "NSP_TOOL=$NSP_TOOL" >> $GITHUB_ENV
+          # Exhaustive search for any tool that can build NSP
+          find / -name "*build_nsp*" -executable 2>/dev/null || true
+          find / -name "*nx-builder*" -executable 2>/dev/null || true
           
       - name: Compile Switch artifacts (NSP & NRO)
         working-directory: sysmodule
         run: |
-          # If we found the tool, use it in the environment
-          if [ ! -z "$NSP_TOOL" ]; then
-            export PATH=$(dirname $NSP_TOOL):$PATH
-          fi
+          # Try to locate and add to path
+          for tool in build_nsp nx-builder; do
+            TOOL_PATH=$(find /opt/devkitpro -name "$tool" -executable | head -n 1)
+            if [ ! -z "$TOOL_PATH" ]; then
+              export PATH=$(dirname $TOOL_PATH):$PATH
+              echo "Added $(dirname $TOOL_PATH) to PATH"
+            fi
+          done
           make
 
       - name: Upload Switch artifacts
