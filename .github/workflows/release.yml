@@ -66,13 +66,8 @@ jobs:
       
       - name: Prepare build environment
         run: |
-          apt-get update && apt-get install -y make
-          # Dynamically find all tool directories and add them to PATH
-          for d in $(find /opt/devkitpro -type d -name "bin"); do
-            export PATH=$d:$PATH
-            echo "Added $d to PATH"
-          done
-          echo "PATH=$PATH" >> $GITHUB_ENV
+          apt-get update
+          apt-get install -y make switch-tools
           
       - name: Compile Switch artifacts (NSP & NRO)
         working-directory: sysmodule
