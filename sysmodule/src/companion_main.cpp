@@ -3,7 +3,7 @@
 
 int main(int argc, char* argv[]) {
     // Initialize standard HID
-    padConfigureDefault();
+    padConfigureInput(1, HidNpadStyleSet_NpadStandard);
     PadState pad;
     padInitializeDefault(&pad);
 
