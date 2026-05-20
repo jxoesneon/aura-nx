@@ -1,5 +1,5 @@
-[**mcp-server**](../README.md)
+[**Aura-NX MCP API**](../README.md)
 
 ***
 
-[mcp-server](../README.md) / index
+[Aura-NX MCP API](../README.md) / index

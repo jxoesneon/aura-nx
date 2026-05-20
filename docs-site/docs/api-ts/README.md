@@ -1,4 +1,4 @@
-**mcp-server**
+**Aura-NX MCP API**
 
 ***
 

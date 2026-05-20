@@ -1,8 +1,8 @@
-[**mcp-server**](../README.md)
+[**Aura-NX MCP API**](../README.md)
 
 ***
 
-[mcp-server](../README.md) / crash\_monitor
+[Aura-NX MCP API](../README.md) / crash\_monitor
 
 ## Functions
 

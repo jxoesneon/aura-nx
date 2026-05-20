@@ -1,8 +1,8 @@
-[**mcp-server**](../README.md)
+[**Aura-NX MCP API**](../README.md)
 
 ***
 
-[mcp-server](../README.md) / discovery
+[Aura-NX MCP API](../README.md) / discovery
 
 ## Functions
 

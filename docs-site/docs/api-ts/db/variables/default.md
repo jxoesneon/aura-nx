@@ -1,9 +1,9 @@
-[**mcp-server**](../../README.md)
+[**Aura-NX MCP API**](../../README.md)
 
 ***
 
-[mcp-server](../../README.md) / [db](../README.md) / default
+[Aura-NX MCP API](../../README.md) / [db](../README.md) / default
 
 > `const` **default**: `Database`
 
-Defined in: [db.ts:45](https://github.com/jxoesneon/aura-nx/blob/2c9647e83da67127679e3eeb001b86cfacad009e/mcp-server/src/db.ts#L45)
+Defined in: [db.ts:45](https://github.com/jxoesneon/aura-nx/blob/36bf3519f9e12b159d44ce0d6b0ba4ef6ed7b787/mcp-server/src/db.ts#L45)
