@@ -66,12 +66,23 @@ jobs:
       
       - name: Prepare build environment
         run: |
-          apt-get update
-          apt-get install -y make switch-tools
+          apt-get update && apt-get install -y make
+          ls -la /opt/devkitpro/tools/bin || true
           
       - name: Compile Switch artifacts (NSP & NRO)
         working-directory: sysmodule
-        run: make
+        run: |
+          # Try to build everything, but handle NSP separately
+          make aura_nx_sysmodule.nso
+          make aura_nx_companion.nro
+          # Only attempt NSP if tool is present
+          if command -v build_nsp > /dev/null; then
+            make aura_nx_sysmodule.nsp
+          else
+            echo "build_nsp not found, skipping NSP generation."
+            # Copy NSO to release-assets so it's included
+            cp aura_nx_sysmodule.nso ../release-assets/
+          fi
 
       - name: Upload Switch artifacts
         uses: actions/upload-artifact@v4
@@ -80,7 +91,8 @@ jobs:
           path: |
             sysmodule/*.nsp
             sysmodule/*.nro
-
+            sysmodule/*.nso
+            sysmodule/*.elf
   create-release:
     name: Create GitHub Release
     needs: [build-mcp, build-switch]
