@@ -67,8 +67,7 @@ jobs:
       - name: Prepare build environment
         run: |
           apt-get update && apt-get install -y make
-          # Debug tools location
-          find /opt/devkitpro -name "*nsp*"
+          dkp-pacman -Syu --noconfirm switch-tools
           
       - name: Compile Switch artifacts (NSP & NRO)
         working-directory: sysmodule
