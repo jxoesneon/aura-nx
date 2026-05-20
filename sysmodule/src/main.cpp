@@ -1,6 +1,7 @@
 #include <switch.h>
 #include <cstdio>
 #include <cstring>
+#include <cstdlib>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -86,11 +87,11 @@ void handleRequest(int client_fd, u32 nv_fd) {
     } else if (strstr(buffer, "\"method\":\"get_clocks\"")) {
         u32 cpu_hz = 0, gpu_hz = 0;
         ClkrstSession session;
-        if (R_SUCCEEDED(clkrstOpenSession(&session, PcvModule_CpuBus, 3))) {
+        if (R_SUCCEEDED(clkrstOpenSession(&session, PcvModuleId_CpuBus, 3))) {
             clkrstGetClockRate(&session, &cpu_hz);
             clkrstCloseSession(&session);
         }
-        if (R_SUCCEEDED(clkrstOpenSession(&session, PcvModule_Gpu, 3))) {
+        if (R_SUCCEEDED(clkrstOpenSession(&session, PcvModuleId_GPU, 3))) {
             clkrstGetClockRate(&session, &gpu_hz);
             clkrstCloseSession(&session);
         }
@@ -133,7 +134,7 @@ void handleRequest(int client_fd, u32 nv_fd) {
     } else if (strstr(buffer, "\"method\":\"get_pmu_counters\"")) {
         u64 cycles = read_cycle_counter();
         char response[256];
-        snprintf(response, sizeof(response), "{\"jsonrpc\":\"2.0\",\"result\":{\"cycles\":%lu},\"id\":1}\n", cycles);
+        snprintf(response, sizeof(response), "{\"jsonrpc\":\"2.0\",\"result\":{\"cycles\":%lu},\"id\":1}\n", (unsigned long)cycles);
         send(client_fd, response, strlen(response), 0);
     }
 }
@@ -145,7 +146,7 @@ int main(int argc, char* argv[]) {
     socketInitializeDefault();
 
     u32 nv_fd = 0;
-    nvOpen("/dev/nvhost-ctrl-gpu", &nv_fd);
+    nvOpen(&nv_fd, "/dev/nvhost-ctrl-gpu");
 
     // Start auto-discovery broadcast
     startDiscoveryBroadcast();

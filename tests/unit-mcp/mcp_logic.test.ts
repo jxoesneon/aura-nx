@@ -81,11 +81,13 @@ describe('MCP Server Logic Tests', () => {
   });
 
   describe('Asset Server Path Protection', () => {
-    const projectRoot = '/data/data/com.termux/files/home/aura-nx';
+    // Use an absolute path that is valid on the current platform
+    const projectRoot = path.resolve(process.cwd());
 
     it('should allow valid relative paths within the project root', () => {
-      const { fullPath, isSafe } = normalizeAndCheckPath(projectRoot, 'assets/textures/player.png');
-      expect(fullPath).toBe(path.join(projectRoot, 'assets/textures/player.png'));
+      const relativePath = path.join('assets', 'textures', 'player.png');
+      const { fullPath, isSafe } = normalizeAndCheckPath(projectRoot, relativePath);
+      expect(fullPath).toBe(path.join(projectRoot, relativePath));
       expect(isSafe).toBe(true);
     });
 
@@ -95,12 +97,16 @@ describe('MCP Server Logic Tests', () => {
     });
 
     it('should block absolute paths outside the root', () => {
-      const { isSafe } = normalizeAndCheckPath(projectRoot, '/etc/passwd');
+      // On Windows, /etc/passwd won't be absolute unless we are on the same drive.
+      // We use a path we know is absolute and outside projectRoot.
+      const absoluteOutside = path.resolve(projectRoot, '..', 'outside.txt');
+      const { isSafe } = normalizeAndCheckPath(projectRoot, absoluteOutside);
       expect(isSafe).toBe(false);
     });
 
     it('should handle paths with redundant dots correctly', () => {
-      const { isSafe } = normalizeAndCheckPath(projectRoot, './src/../assets/data.bin');
+      const redundantPath = './src/../assets/data.bin';
+      const { isSafe } = normalizeAndCheckPath(projectRoot, redundantPath);
       expect(isSafe).toBe(true);
     });
   });
