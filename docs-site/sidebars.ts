@@ -36,7 +36,7 @@ const sidebars: SidebarsConfig = {
       label: 'API Reference (TypeScript)',
       link: {
         type: 'doc',
-        id: 'api-ts/index',
+        id: 'api-ts/index/README',
       },
       items: [
         {
