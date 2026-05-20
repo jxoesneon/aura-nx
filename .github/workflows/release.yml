@@ -60,13 +60,19 @@ jobs:
   build-switch:
     name: Build Switch Artifacts
     runs-on: ubuntu-latest
-    container: devkitpro/devkitpga:latest
+    container: devkitpro/devkita64:latest
     steps:
       - uses: actions/checkout@v4
       
       - name: Prepare build environment
         run: |
           apt-get update && apt-get install -y make
+          # Dynamically find all tool directories and add them to PATH
+          for d in $(find /opt/devkitpro -type d -name "bin"); do
+            export PATH=$d:$PATH
+            echo "Added $d to PATH"
+          done
+          echo "PATH=$PATH" >> $GITHUB_ENV
           
       - name: Compile Switch artifacts (NSP & NRO)
         working-directory: sysmodule
