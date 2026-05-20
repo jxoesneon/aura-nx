@@ -1,0 +1,14 @@
+# Doxyfile for Aura-NX C++ Core
+PROJECT_NAME           = "Aura-NX C++ Core"
+OUTPUT_DIRECTORY       = docs-site/static/api-cpp
+CREATE_SUBNEXT         = YES
+ALLOW_DOT_NAMES        = YES
+RECURSIVE              = YES
+INPUT                  = sysmodule/src client-lib/include
+GENERATE_HTML          = YES
+HTML_OUTPUT            = .
+GENERATE_LATEX         = NO
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = YES
+EXTRACT_STATIC         = YES
+FILE_PATTERNS          = *.cpp *.h *.hpp

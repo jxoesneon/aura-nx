@@ -6,7 +6,8 @@
   "scripts": {
     "start": "ts-node src/index.ts",
     "build": "tsc",
-    "test": "vitest run"
+    "test": "vitest run",
+    "docs": "typedoc"
   },
   "keywords": [],
   "author": "",
@@ -24,6 +25,8 @@
     "@types/node": "^25.9.1",
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^3.2.4",
+    "typedoc": "^0.28.19",
+    "typedoc-plugin-markdown": "^4.11.0",
     "vitest": "^3.2.4"
   }
 }

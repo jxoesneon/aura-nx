@@ -8,7 +8,7 @@ While Aura-NX v1.x provides a robust foundational toolkit for autonomous Switch 
 **The Problem**: v1.x uses a mocked screen capture stub. Raw framebuffer copies on the CPU are too slow for real-time AI visual analysis, often taking >100ms per frame.
 
 **The v2.0.0 Solution**:
-*   **Hardware MJPEG**: Utilize the Tegra X1's dedicated JPEG engine via the `nvhost-nvjpg` device. This allows for ~60fps frame capture with <1% CPU overhead.
+*   **Hardware MJPEG**: Utilize the Tegra X1's dedicated JPEG engine via the `nvhost-nvjpg` device. This allows for ~60fps frame capture with &lt;1% CPU overhead.
 *   **H.264 Stream**: For fluid remote gameplay monitoring, we will integrate with the Horizon OS `grc:d` (Game Recording Control) service. This is the same engine used for the console's native "Record" button, providing highly optimized H.264 encoding.
 *   **DMA-BUF Zero-Copy**: Implement shared memory mapping between the game's framebuffer and the encoder engine to eliminate expensive memory copies.
 

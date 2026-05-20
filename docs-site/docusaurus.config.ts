@@ -2,34 +2,19 @@ import {themes as prismThemes} from 'prism-react-renderer';
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
-// This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
-
 const config: Config = {
   title: 'Aura-NX Institutional Portal',
-  tagline: 'Institutional Knowledge Base for Aura-NX',
+  tagline: 'High-Precision Console Development & Institutional Infrastructure',
   favicon: 'img/favicon.ico',
 
-  // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
-  future: {
-    v4: true, // Improve compatibility with the upcoming Docusaurus v4
-  },
-
-  // Set the production url of your site here
   url: "https://jxoesneon.github.io",
-  // Set the /<baseUrl>/ pathname under which your site is served
-  // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: "/aura-nx/",
 
-  // GitHub pages deployment config.
-  // If you aren't using GitHub pages, you don't need these.
   organizationName: "jxoesneon",
   projectName: "aura-nx",
 
   onBrokenLinks: 'throw',
 
-  // Even if you don't use internationalization, you can use this field to set
-  // useful metadata like html lang. For example, if your site is Chinese, you
-  // may want to replace "en" with "zh-Hans".
   i18n: {
     defaultLocale: 'en',
     locales: ['en'],
@@ -41,10 +26,7 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
-          editUrl:
-            'https://github.com/jxoesneon/aura-nx/tree/main/packages/create-docusaurus/templates/shared/',
+          editUrl: 'https://github.com/jxoesneon/aura-nx/tree/main/docs-site/',
         },
         blog: {
           showReadingTime: true,
@@ -52,14 +34,6 @@ const config: Config = {
             type: ['rss', 'atom'],
             xslt: true,
           },
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
-          editUrl:
-            'https://github.com/jxoesneon/aura-nx/tree/main/packages/create-docusaurus/templates/shared/',
-          // Useful options to enforce blogging best practices
-          onInlineTags: 'warn',
-          onInlineAuthors: 'warn',
-          onUntruncatedBlogPosts: 'warn',
         },
         theme: {
           customCss: './src/css/custom.css',
@@ -69,15 +43,16 @@ const config: Config = {
   ],
 
   themeConfig: {
-    // Replace with your project's social card
-    image: 'img/docusaurus-social-card.jpg',
+    image: 'img/social-card.jpg',
     colorMode: {
-      respectPrefersColorScheme: true,
+      defaultMode: 'dark',
+      disableSwitch: true,
+      respectPrefersColorScheme: false,
     },
     navbar: {
-      title: 'Aura-NX Institutional Portal',
+      title: 'AURA-NX',
       logo: {
-        alt: 'My Site Logo',
+        alt: 'Aura-NX Logo',
         src: 'img/logo.svg',
       },
       items: [
@@ -85,12 +60,27 @@ const config: Config = {
           type: 'docSidebar',
           sidebarId: 'tutorialSidebar',
           position: 'left',
-          label: 'Docs',
+          label: 'Documentation',
+        },
+        {
+          href: '/aura-nx/api-cpp/index.html',
+          label: 'C++ Core API',
+          position: 'left',
         },
         {to: '/blog', label: 'Blog', position: 'left'},
         {
+          href: 'https://github.com/jxoesneon/aura-nx/wiki',
+          label: 'Wiki',
+          position: 'right',
+        },
+        {
+          href: 'https://github.com/jxoesneon/aura-nx/releases',
+          label: 'Releases',
+          position: 'right',
+        },
+        {
           href: 'https://github.com/jxoesneon/aura-nx',
-          label: 'GitHub',
+          label: 'SDK',
           position: 'right',
         },
       ],
@@ -99,50 +89,59 @@ const config: Config = {
       style: 'dark',
       links: [
         {
-          title: 'Docs',
+          title: 'Infrastructure',
           items: [
             {
-              label: 'Portal',
+              label: 'Architecture Guide',
+              to: '/docs/architecture',
+            },
+            {
+              label: 'Sysmodule Specification',
+              to: '/docs/architecture',
+            },
+            {
+              label: 'Network VFS Layer',
               to: '/docs/architecture',
             },
           ],
         },
         {
-          title: 'Community',
+          title: 'Development',
           items: [
             {
-              label: 'Stack Overflow',
-              href: 'https://stackoverflow.com/questions/tagged/docusaurus',
+              label: 'Institutional Wiki',
+              href: 'https://github.com/jxoesneon/aura-nx/wiki',
             },
             {
-              label: 'Discord',
-              href: 'https://discordapp.com/invite/docusaurus',
+              label: 'SDK Reference',
+              href: 'https://github.com/jxoesneon/aura-nx',
             },
             {
-              label: 'X',
-              href: 'https://x.com/docusaurus',
+              label: 'Bug Bounty',
+              href: 'https://github.com/jxoesneon/aura-nx/security',
             },
           ],
         },
         {
-          title: 'More',
+          title: 'Connect',
           items: [
-            {
-              label: 'Blog',
-              to: '/blog',
-            },
             {
               label: 'GitHub',
               href: 'https://github.com/jxoesneon/aura-nx',
             },
+            {
+              label: 'Institutional Chat',
+              href: 'https://discord.gg/aura-nx',
+            },
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} Aura-NX Institutional Portal. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Aura-NX Project. Restricted Access.`,
     },
     prism: {
-      theme: prismThemes.github,
+      theme: prismThemes.dracula,
       darkTheme: prismThemes.dracula,
+      additionalLanguages: ['rust', 'cpp', 'bash', 'json'],
     },
   } satisfies Preset.ThemeConfig,
 };

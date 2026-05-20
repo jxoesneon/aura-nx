@@ -21,7 +21,7 @@ A comprehensive technical and security audit was conducted on May 20, 2026. The 
 
 ## Recommendations for v1.2.0:
 *   Implement `net_seek` in the client VFS for better compatibility with legacy engine loaders.
-*   Add TLS support for the MCP <-> Sysmodule link if deployed in non-isolated networks.
+*   Add TLS support for the MCP &lt;-&gt; Sysmodule link if deployed in non-isolated networks.
 *   Expand the Dashboard with a live 3D memory heatmap visualization.
 
 **Audit Status:** APPROVED

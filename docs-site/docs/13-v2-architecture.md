@@ -36,5 +36,5 @@ V2.0.0 introduces high-resolution cycle-accurate profiling by unlocking the ARMv
 Aura-NX v2.0.0 replaces slow framebuffer copies with the console's native hardware encoding engine.
 
 - **Game Recording Control (`grc:d`)**: The sysmodule hooks into the system's game recording service to capture H.264 video streams.
-- **Low Latency**: Utilizes DMA-BUF zero-copy memory mapping, ensuring <16ms latency for the remote telemetry stream.
+- **Low Latency**: Utilizes DMA-BUF zero-copy memory mapping, ensuring &lt;16ms latency for the remote telemetry stream.
 - **Standard Protocol**: The H.264 stream is encapsulated in MPEG-TS and served over a new dedicated socket, allowing standard players (VLC, FFmpeg) or AI vision models to consume the feed.

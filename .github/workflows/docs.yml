@@ -30,6 +30,19 @@ jobs:
         working-directory: docs-site
         run: npm install
 
+      - name: Install documentation tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y doxygen graphviz
+          cd mcp-server && npm install typedoc typedoc-plugin-markdown --save-dev
+
+      - name: Generate TypeScript API Docs
+        working-directory: mcp-server
+        run: npm run docs
+
+      - name: Generate C++ API Docs
+        run: doxygen Doxyfile
+
       - name: Sync docs folder
         run: |
           mkdir -p docs-site/docs
