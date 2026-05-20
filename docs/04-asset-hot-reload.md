@@ -12,7 +12,7 @@ Aura-NX requires the target homebrew game to link against a lightweight network 
     The game registers a custom device (e.g., `net:/`) using `libnx`'s `devoptab` interface. Calls like `fopen("net:/textures/hero.png")` are serialized over TCP to the Aura-NX PC MCP server, fetching the file directly into Switch RAM.
 2.  **Notification Layer (UDP):**
     The game runs a background listener thread on a UDP port. 
-    When the PC-side File Watcher detects a change in the workspace, it fires a `RELOAD_ASSET <path>` packet to the Switch.
+    When the PC-side File Watcher detects a change in the workspace, it fires a `RELOAD_ASSET &lt;path&gt;` packet to the Switch.
 3.  **Engine Pipeline Swap:**
     *   **Textures:** The UDP listener signals the render thread. The engine re-fetches the asset via `net:/` and issues the native `glTexImage2D` or NVN equivalent to swap the GPU buffer.
     *   **Shaders:** The PC pre-compiles the shader to native Tegra binary. The Switch fetches the binary and re-binds the shader state mid-frame.

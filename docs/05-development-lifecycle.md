@@ -6,7 +6,7 @@ Aura-NX follows an institutional-grade lifecycle model based on AAA console deve
 
 ### 1. Planning & Specification (Phase 0)
 *   **Deliverable:** Technical Design Document (TDD) and IPC Interface Specification.
-*   **Goal:** Define the exact `nvdrv` hooks and network protocols to be implemented. Define success metrics (e.g., latency < 16ms for hot-reloads).
+*   **Goal:** Define the exact `nvdrv` hooks and network protocols to be implemented. Define success metrics (e.g., latency &lt; 16ms for hot-reloads).
 
 ### 2. Alpha (Feature Complete)
 *   **Definition:** Core sysmodule logic, GDB bridge, and Network VFS are functional.
