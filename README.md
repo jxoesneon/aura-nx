@@ -25,8 +25,8 @@ To bridge the gap between AI-driven development and bare-metal Nintendo Switch h
 *   [Code of Conduct](CODE_OF_CONDUCT.md)
 
 ## Core Capabilities
-*   **Execution Control:** Automated GDB backtracing and live debugging with ASLR awareness.
-*   **Telemetry:** TCP-based `stdout`/`stderr` redirection for real-time console logs.
+*   **Execution Control:** Automated GDB backtracing, live debugging with ASLR awareness, and **Remote Input Injection** (button simulation).
+*   **Telemetry:** TCP-based `stdout`/`stderr` redirection and **WebSocket-powered live telemetry** for the dashboard.
 *   **Observability:** Institutional-grade monitoring of Tegra PMU GPU load and system-wide hardware clocks.
-*   **Workflow:** Network-backed Virtual File System (VFS) for instant, mid-frame texture and shader hot-reloading.
-*   **Professional Rigor:** Full lifecycle support from Alpha to Gold, backed by Hardware-in-the-Loop (HIL) testing and strict security audits.
+*   **Workflow:** Network-backed Virtual File System (VFS) and a **React/Vite Target Manager Dashboard** for real-time fleet oversight.
+*   **Professional Rigor:** Full lifecycle support, Hardware-in-the-Loop (HIL) testing, and **GitHub Actions CI/CD**.
