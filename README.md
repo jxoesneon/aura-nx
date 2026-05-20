@@ -99,3 +99,4 @@ Aura-NX exposes the following tools to AI agents:
 9. [Aura-NX v1.0.0 Roadmap (Advanced QoL)](docs/09-roadmap-v1.md)
 10. [Audit Sign-off](docs/10-audit-signoff.md)
 11. [Developer Lifecycle Handbook](docs/11-developer-lifecycle.md)
+12. [Aura-NX v2.0.0 Technical Advisory](docs/12-v2-roadmap.md)
