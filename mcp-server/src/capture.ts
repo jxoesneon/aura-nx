@@ -10,7 +10,7 @@ export async function handleCaptureScreen(ip: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const client = new net.Socket();
     const port = 12346;
-    let data = '';
+    let chunks: Buffer[] = [];
 
     client.connect(port, ip, () => {
       const request = {
@@ -22,20 +22,27 @@ export async function handleCaptureScreen(ip: string): Promise<string> {
       client.write(JSON.stringify(request));
     });
 
-    client.on('data', (chunk) => {
-      data += chunk.toString();
-      // Basic check if we have a full JSON response (assuming it ends with \n or just closes)
-      try {
-        const response = JSON.parse(data);
-        if (response.result) {
-          resolve(response.result);
-          client.destroy();
-        } else if (response.error) {
-          reject(new Error(response.error.message || 'Unknown JSON-RPC error'));
-          client.destroy();
+    client.on('data', (dataChunk) => {
+      const chunk = Buffer.isBuffer(dataChunk) ? dataChunk : Buffer.from(dataChunk);
+      chunks.push(chunk);
+      
+      // Attempt to parse only if we might have a complete JSON message
+      // To be efficient, we don't toString() the whole thing unless it looks like it's done
+      const lastChunk = chunk;
+      if (lastChunk[lastChunk.length - 1] === 125 || lastChunk[lastChunk.length - 1] === 10) { // '}' or '\n'
+        try {
+          const data = Buffer.concat(chunks).toString('utf8');
+          const response = JSON.parse(data);
+          if (response.result) {
+            resolve(response.result);
+            client.destroy();
+          } else if (response.error) {
+            reject(new Error(response.error.message || 'Unknown JSON-RPC error'));
+            client.destroy();
+          }
+        } catch (e) {
+          // Incomplete JSON or other error, continue collecting chunks
         }
-      } catch (e) {
-        // Keep waiting for more data
       }
     });
 
@@ -44,8 +51,9 @@ export async function handleCaptureScreen(ip: string): Promise<string> {
     });
 
     client.on('close', () => {
-      if (data) {
+      if (chunks.length > 0) {
         try {
+          const data = Buffer.concat(chunks).toString('utf8');
           const response = JSON.parse(data);
           if (response.result) {
             resolve(response.result);

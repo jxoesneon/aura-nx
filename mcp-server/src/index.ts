@@ -14,9 +14,21 @@ import { startDiscoveryListener } from "./discovery";
 import { handleCaptureScreen } from "./capture";
 import { startCrashMonitor } from "./crash_monitor";
 import { backupSave, restoreSave } from "./save_manager";
+import db from "./db";
 
 // Configuration
 let DEVICE_IP = process.env.AURA_DEVICE_IP || "127.0.0.1";
+
+async function getTargetIp(args: any): Promise<string> {
+  if (args?.ip) return args.ip;
+  if (args?.group) {
+    const row = db.prepare('SELECT ip FROM devices WHERE "group" = ? ORDER BY last_seen DESC LIMIT 1').get(args.group) as any;
+    if (row) return row.ip;
+    throw new Error(`No device found in group: ${args.group}`);
+  }
+  const row = db.prepare('SELECT ip FROM devices ORDER BY last_seen DESC LIMIT 1').get() as any;
+  return row ? row.ip : DEVICE_IP;
+}
 const NXLINK_PORT = 28771;
 const GDB_PORT = 22225;
 const SYSMODULE_PORT = 12346;
@@ -113,13 +125,13 @@ function calculateChecksum(data: string): string {
   return sum.toString(16).padStart(2, "0");
 }
 
-async function setGdbBreakpoint(address: string): Promise<string> {
+async function setGdbBreakpoint(address: string, ip: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const client = new net.Socket();
     let response = "";
 
     client.setTimeout(5000);
-    client.connect(GDB_PORT, DEVICE_IP, () => {
+    client.connect(GDB_PORT, ip, () => {
       const packetData = `Z0,${address},4`;
       const packet = `$${packetData}#${calculateChecksum(packetData)}`;
       client.write(packet);
@@ -144,13 +156,13 @@ async function setGdbBreakpoint(address: string): Promise<string> {
   });
 }
 
-async function fetchGpuLoad(): Promise<number> {
+async function fetchGpuLoad(ip: string): Promise<number> {
   return new Promise((resolve, reject) => {
     const client = new net.Socket();
     let dataReceived = "";
 
     client.setTimeout(3000);
-    client.connect(SYSMODULE_PORT, DEVICE_IP, () => {
+    client.connect(SYSMODULE_PORT, ip, () => {
       client.write(JSON.stringify({ method: "get_gpu_load", id: 1 }));
     });
 
@@ -175,11 +187,42 @@ async function fetchGpuLoad(): Promise<number> {
   });
 }
 
-async function sendReloadSignal(assetPath: string): Promise<void> {
+async function fetchPmuCounters(ip: string): Promise<{ cycles: number }> {
+  return new Promise((resolve, reject) => {
+    const client = new net.Socket();
+    let dataReceived = "";
+
+    client.setTimeout(3000);
+    client.connect(SYSMODULE_PORT, ip, () => {
+      client.write(JSON.stringify({ method: "get_pmu_counters", id: 1 }));
+    });
+
+    client.on("data", (data) => {
+      dataReceived += data.toString();
+      try {
+        const response = JSON.parse(dataReceived);
+        resolve(response.result ?? { cycles: 0 });
+        client.destroy();
+      } catch (e) {
+      }
+    });
+
+    client.on("timeout", () => {
+      client.destroy();
+      reject(new Error(`Timeout at ${DEVICE_IP}`));
+    });
+
+    client.on("error", (err: any) => {
+      reject(err);
+    });
+  });
+}
+
+async function sendReloadSignal(assetPath: string, ip: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const client = dgram.createSocket("udp4");
     const message = Buffer.from(`RELOAD_ASSET ${assetPath}`);
-    client.send(message, ASSET_RELOAD_PORT, DEVICE_IP, (err) => {
+    client.send(message, ASSET_RELOAD_PORT, ip, (err) => {
       client.close();
       if (err) reject(err);
       else resolve();
@@ -198,7 +241,7 @@ wss.on("connection", (ws) => {
 
 setInterval(async () => {
   try {
-    const gpuLoad = await fetchGpuLoad().catch(() => 0);
+    const gpuLoad = await fetchGpuLoad(DEVICE_IP).catch(() => 0);
     const telemetry = {
       type: "telemetry",
       deviceIp: DEVICE_IP,
@@ -225,7 +268,24 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: "read_gpu_load",
         description: "Read the current GPU load percentage from the device.",
-        inputSchema: { type: "object", properties: {} },
+        inputSchema: {
+          type: "object",
+          properties: {
+            ip: { type: "string", description: "Target device IP address." },
+            group: { type: "string", description: "Target device group name." },
+          }
+        },
+      },
+      {
+        name: "read_pmu_counters",
+        description: "Read AArch64 PMU counters (Cycle Counter) from the device. Requires Atmosphere pm_user_enr patch.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            ip: { type: "string", description: "Target device IP address." },
+            group: { type: "string", description: "Target device group name." },
+          }
+        },
       },
       {
         name: "set_breakpoint",
@@ -234,6 +294,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           type: "object",
           properties: {
             location: { type: "string", description: "Hex address (e.g. 0x7100001234)." },
+            ip: { type: "string", description: "Target device IP address." },
+            group: { type: "string", description: "Target device group name." },
           },
           required: ["location"],
         },
@@ -250,6 +312,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           type: "object",
           properties: {
             path: { type: "string", description: "Path to the asset to reload." },
+            ip: { type: "string", description: "Target device IP address." },
+            group: { type: "string", description: "Target device group name." },
           },
           required: ["path"],
         },
@@ -257,7 +321,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: "capture_screen",
         description: "Capture the current framebuffer of the foreground game.",
-        inputSchema: { type: "object", properties: {} },
+        inputSchema: {
+          type: "object",
+          properties: {
+            ip: { type: "string", description: "Target device IP address." },
+            group: { type: "string", description: "Target device group name." },
+          }
+        },
       },
       {
         name: "backup_save",
@@ -266,6 +336,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           type: "object",
           properties: {
             name: { type: "string", description: "Name of the save backup." },
+            ip: { type: "string", description: "Target device IP address." },
+            group: { type: "string", description: "Target device group name." },
           },
           required: ["name"],
         },
@@ -277,6 +349,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           type: "object",
           properties: {
             name: { type: "string", description: "Name of the save backup to restore." },
+            ip: { type: "string", description: "Target device IP address." },
+            group: { type: "string", description: "Target device group name." },
           },
           required: ["name"],
         },
@@ -289,6 +363,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {
             button: { type: "string", description: "Button to press (e.g., 'A', 'B', 'X', 'Y', 'L', 'R', 'ZL', 'ZR', 'Plus', 'Minus', 'Left', 'Up', 'Right', 'Down')." },
             duration: { type: "number", description: "Duration to hold the button in milliseconds." },
+            ip: { type: "string", description: "Target device IP address." },
+            group: { type: "string", description: "Target device group name." },
           },
           required: ["button", "duration"],
         },
@@ -297,7 +373,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   };
 });
 
-async function injectInput(button: string, duration: number): Promise<string> {
+async function injectInput(button: string, duration: number, ip: string): Promise<string> {
   const buttonMap: { [key: string]: string } = {
     "A": (1n << 0n).toString(),
     "B": (1n << 1n).toString(),
@@ -327,7 +403,7 @@ async function injectInput(button: string, duration: number): Promise<string> {
     let dataReceived = "";
 
     client.setTimeout(3000);
-    client.connect(SYSMODULE_PORT, DEVICE_IP, () => {
+    client.connect(SYSMODULE_PORT, ip, () => {
       client.write(JSON.stringify({ 
         method: "inject_input", 
         params: { buttons: buttonValue, duration: duration },
@@ -357,11 +433,21 @@ async function injectInput(button: string, duration: number): Promise<string> {
 }
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const ip = await getTargetIp(request.params.arguments);
+
   switch (request.params.name) {
     case "read_gpu_load":
       try {
-        const load = await fetchGpuLoad();
+        const load = await fetchGpuLoad(ip);
         return { content: [{ type: "text", text: `GPU Load: ${load}%` }] };
+      } catch (error: any) {
+        return { isError: true, content: [{ type: "text", text: `Error: ${error.message}` }] };
+      }
+
+    case "read_pmu_counters":
+      try {
+        const counters = await fetchPmuCounters(ip);
+        return { content: [{ type: "text", text: `PMU Cycles: ${counters.cycles}` }] };
       } catch (error: any) {
         return { isError: true, content: [{ type: "text", text: `Error: ${error.message}` }] };
       }
@@ -370,7 +456,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       try {
         const location = request.params.arguments?.location as string;
         const address = location.startsWith("0x") ? location.slice(2) : location;
-        const response = await setGdbBreakpoint(address);
+        const response = await setGdbBreakpoint(address, ip);
         return { content: [{ type: "text", text: `GDB Response: ${response}` }] };
       } catch (error: any) {
         return { isError: true, content: [{ type: "text", text: `Error: ${error.message}` }] };
@@ -384,7 +470,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case "reload_asset":
       try {
         const assetPath = request.params.arguments?.path as string;
-        await sendReloadSignal(assetPath);
+        await sendReloadSignal(assetPath, ip);
         return { content: [{ type: "text", text: `Reload signal sent for asset: ${assetPath}` }] };
       } catch (error: any) {
         return { isError: true, content: [{ type: "text", text: `Error: ${error.message}` }] };
@@ -392,7 +478,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     case "capture_screen":
       try {
-        const b64 = await handleCaptureScreen(DEVICE_IP);
+        const b64 = await handleCaptureScreen(ip);
         return { content: [{ type: "text", text: b64 }] };
       } catch (error: any) {
         return { isError: true, content: [{ type: "text", text: `Error: ${error.message}` }] };
@@ -401,7 +487,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case "backup_save":
       try {
         const name = request.params.arguments?.name as string;
-        const res = await backupSave(DEVICE_IP, name);
+        const res = await backupSave(ip, name);
         return { content: [{ type: "text", text: res }] };
       } catch (error: any) {
         return { isError: true, content: [{ type: "text", text: `Error: ${error.message}` }] };
@@ -410,7 +496,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case "restore_save":
       try {
         const name = request.params.arguments?.name as string;
-        const res = await restoreSave(DEVICE_IP, name);
+        const res = await restoreSave(ip, name);
         return { content: [{ type: "text", text: res }] };
       } catch (error: any) {
         return { isError: true, content: [{ type: "text", text: `Error: ${error.message}` }] };
@@ -420,7 +506,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       try {
         const button = request.params.arguments?.button as string;
         const duration = request.params.arguments?.duration as number;
-        const res = await injectInput(button, duration);
+        const res = await injectInput(button, duration, ip);
         return { content: [{ type: "text", text: res }] };
       } catch (error: any) {
         return { isError: true, content: [{ type: "text", text: `Error: ${error.message}` }] };

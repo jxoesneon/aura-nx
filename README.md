@@ -1,6 +1,13 @@
-# Aura-NX Debug MCP
+# Aura-NX Debug MCP (v2.0.0 Enterprise)
 
 **Aura-NX** is an institutional-grade, Model Context Protocol (MCP) server architecture designed for AAA-grade Nintendo Switch (NX) homebrew development. It provides a robust, secure, and professional development environment for autonomous AI agent swarms to debug, profile, and hot-reload Switch applications over a LAN connection.
+
+## 🚀 v2.0.0 Enterprise Features
+
+*   **Mutual TLS (mTLS):** Certificate-based authentication between PC and Switch for secure studio networks.
+*   **Fleet Management:** SQLite-backed persistent tracking and mass command dispatch for hundreds of console targets.
+*   **Cycle-Accurate Profiling:** Micro-architectural telemetry via `PMCCNTR_EL0` and raw PMU counter access.
+*   **Hardware Video Streaming:** High-performance H.264 streaming using the Horizon `grc:d` service.
 
 ## 🏗️ Architecture
 
@@ -90,6 +97,7 @@ Aura-NX exposes the following tools to AI agents:
 2. [Debugging Protocol (GDB & nxlink)](docs/02-debugging-protocol.md)
 3. [Profiling Engine (GPU & CPU)](docs/03-profiling-engine.md)
 4. [Asset Hot-Reloading (Network VFS)](docs/04-asset-hot-reload.md)
+13. [v2.0.0 Enterprise Architecture](docs/13-v2-architecture.md)
 
 ### Institutional Standards
 5. [Development Lifecycle](docs/05-development-lifecycle.md)

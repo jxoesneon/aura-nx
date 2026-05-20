@@ -1,4 +1,5 @@
 import * as dgram from "dgram";
+import db from "./db";
 
 const DISCOVERY_PORT = 12349;
 const DISCOVERY_PACKET = "AURA_ANNOUNCE";
@@ -14,6 +15,14 @@ export function startDiscoveryListener(onDiscover: (ip: string) => void) {
 
   socket.on("message", (msg, rinfo) => {
     if (msg.toString() === DISCOVERY_PACKET) {
+      db.prepare(`
+        INSERT INTO devices (ip, name, status, last_seen)
+        VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(ip) DO UPDATE SET
+          status = excluded.status,
+          last_seen = CURRENT_TIMESTAMP
+      `).run(rinfo.address, `Switch-${rinfo.address.split('.').pop()}`, 'active');
+
       if (!discoveredIps.has(rinfo.address)) {
         discoveredIps.add(rinfo.address);
         console.error(`[discovery] Discovered new device at ${rinfo.address}`);

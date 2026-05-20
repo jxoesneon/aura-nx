@@ -13,6 +13,7 @@
 #include "crash_monitor.h"
 #include "save_manager.h"
 #include "input_injector.h"
+#include "pmu_profiler.h"
 
 extern "C" {
     u32 __nx_applet_type = AppletType_None;
@@ -128,6 +129,11 @@ void handleRequest(int client_fd, u32 nv_fd) {
         int duration = (int)extractJsonNumber(buffer, "duration");
         injectInput(buttons, duration);
         const char* response = "{\"jsonrpc\":\"2.0\",\"result\":\"Input injected\",\"id\":1}\n";
+        send(client_fd, response, strlen(response), 0);
+    } else if (strstr(buffer, "\"method\":\"get_pmu_counters\"")) {
+        u64 cycles = read_cycle_counter();
+        char response[256];
+        snprintf(response, sizeof(response), "{\"jsonrpc\":\"2.0\",\"result\":{\"cycles\":%lu},\"id\":1}\n", cycles);
         send(client_fd, response, strlen(response), 0);
     }
 }
