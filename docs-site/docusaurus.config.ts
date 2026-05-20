@@ -8,7 +8,7 @@ const config: Config = {
   favicon: 'img/favicon.ico',
 
   url: "https://jxoesneon.github.io",
-  baseUrl: "/",
+  baseUrl: "/aura-nx/",
 
   organizationName: "jxoesneon",
   projectName: "aura-nx",
