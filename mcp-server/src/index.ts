@@ -22,7 +22,7 @@ const GDB_PORT = 22225;
 const SYSMODULE_PORT = 12346;
 const ASSET_SERVER_PORT = 12347;
 const ASSET_RELOAD_PORT = 12348;
-const WS_PORT = 8081;
+const WS_PORT = process.env.WS_PORT ? parseInt(process.env.WS_PORT) : 8081;
 
 const server = new Server(
   {

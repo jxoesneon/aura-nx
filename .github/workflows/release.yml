@@ -1,0 +1,107 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-mcp:
+    name: Build PC MCP Server
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: mcp-server/package-lock.json
+
+      - name: Install dependencies
+        working-directory: mcp-server
+        run: npm install
+
+      - name: Bundle with esbuild
+        working-directory: mcp-server
+        run: |
+          mkdir -p dist
+          npx esbuild src/index.ts --bundle --platform=node --outfile=dist/index.js
+
+      - name: Build standalone binaries with pkg
+        working-directory: mcp-server
+        run: |
+          mkdir -p binaries
+          # Building for Windows, macOS, and Linux (x64 and arm64)
+          npx pkg dist/index.js \
+            --targets node20-linux-x64,node20-linux-arm64,node20-win-x64,node20-win-arm64,node20-macos-x64,node20-macos-arm64 \
+            --out-path binaries/
+
+      - name: Rename binaries for release
+        working-directory: mcp-server/binaries
+        run: |
+          [ -f index-linux-x64 ] && mv index-linux-x64 aura-nx-mcp-linux-x64 || true
+          [ -f index-linux-arm64 ] && mv index-linux-arm64 aura-nx-mcp-linux-arm64 || true
+          [ -f index-win-x64.exe ] && mv index-win-x64.exe aura-nx-mcp-win-x64.exe || true
+          [ -f index-win-arm64.exe ] && mv index-win-arm64.exe aura-nx-mcp-win-arm64.exe || true
+          [ -f index-macos-x64 ] && mv index-macos-x64 aura-nx-mcp-macos-x64 || true
+          [ -f index-macos-arm64 ] && mv index-macos-arm64 aura-nx-mcp-macos-arm64 || true
+
+      - name: Upload MCP artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-binaries
+          path: mcp-server/binaries/aura-nx-mcp-*
+
+  build-switch:
+    name: Build Switch Artifacts
+    runs-on: ubuntu-latest
+    container: devkitpro/devkita64:latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Prepare build environment
+        run: |
+          apt-get update && apt-get install -y make
+          
+      - name: Compile Switch artifacts (NSP & NRO)
+        working-directory: sysmodule
+        run: make
+
+      - name: Upload Switch artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: switch-artifacts
+          path: |
+            sysmodule/*.nsp
+            sysmodule/*.nro
+
+  create-release:
+    name: Create GitHub Release
+    needs: [build-mcp, build-switch]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten artifacts for release
+        run: |
+          mkdir -p release-assets
+          find artifacts -type f -exec cp {} release-assets/ \;
+          ls -R release-assets/
+
+      - name: GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

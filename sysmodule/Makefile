@@ -18,12 +18,12 @@ include $(DEVKITPRO)/libnx/switch_rules
 # DATA is a list of directories containing binary data
 # ROMFS is the directory containing data to be added to RomFS, relative to the project root
 #---------------------------------------------------------------------------------
-TARGET		:=	aura_nx
-BUILD		:=	build
-SOURCES		:=	src
-INCLUDES	:=	include
-DATA		:=	data
-ROMFS		:=	romfs
+SYSMODULE_TARGET	:=	aura_nx_sysmodule
+COMPANION_TARGET	:=	aura_nx_companion
+SOURCES				:=	src
+INCLUDES			:=	include
+DATA				:=	data
+ROMFS				:=	romfs
 
 #---------------------------------------------------------------------------------
 # options for code generation
@@ -50,77 +50,80 @@ LIBS	:=	-lnx
 LIBDIRS	:=	$(LIBNX)
 
 #---------------------------------------------------------------------------------
-# no real need to edit anything past this point unless you need to add additional
-# rules for different file extensions
-#---------------------------------------------------------------------------------
-ifneq ($(BUILD),$(notdir $(CURDIR)))
+ifeq ($(strip $(TYPE)),)
 #---------------------------------------------------------------------------------
 
-export OUTPUT	:=	$(CURDIR)/$(TARGET)
 export TOPDIR	:=	$(CURDIR)
 
-export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
-			$(foreach dir,$(DATA),$(CURDIR)/$(dir))
+.PHONY: all clean sysmodule companion
 
-export DEPSDIR	:=	$(CURDIR)/$(BUILD)
+all: sysmodule companion
 
-CFILES		:=	$(foreach dir,$(SOURCES),$(wildcard $(dir)/*.c))
-CPPFILES	:=	$(foreach dir,$(SOURCES),$(wildcard $(dir)/*.cpp))
-SFILES		:=	$(foreach dir,$(SOURCES),$(wildcard $(dir)/*.s))
-BINFILES	:=	$(foreach dir,$(DATA),$(wildcard $(dir)/*.*))
+sysmodule:
+	@[ -d build_sysmodule ] || mkdir -p build_sysmodule
+	@$(MAKE) --no-print-directory -C build_sysmodule -f $(CURDIR)/Makefile TARGET=$(SYSMODULE_TARGET) TYPE=SYSMODULE
 
-#---------------------------------------------------------------------------------
-# use GPATH for source lookup if you want to separate source from build
-#---------------------------------------------------------------------------------
-#export GPATH	:=	$(VPATH)
+companion:
+	@[ -d build_companion ] || mkdir -p build_companion
+	@$(MAKE) --no-print-directory -C build_companion -f $(CURDIR)/Makefile TARGET=$(COMPANION_TARGET) TYPE=COMPANION
 
-#---------------------------------------------------------------------------------
-# check for RomFS
-#---------------------------------------------------------------------------------
-ifneq ($(wildcard $(ROMFS)),)
-	export build_romfs_bin := $(TOPDIR)/$(TARGET).romfs
-endif
-
-export OFILES	:=	$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o) \
-			$(BINFILES:.bin=.bin.o)
-
-export INCLUDES	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
-			$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
-			-I$(LIBNX)/include
-
-.PHONY: $(BUILD) clean all
-
-#---------------------------------------------------------------------------------
-all: $(BUILD)
-
-$(BUILD):
-	@[ -d $@ ] || mkdir -p $@
-	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
-
-#---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -rf $(BUILD) $(TARGET).elf $(TARGET).nso $(TARGET).nsp
+	@rm -rf build_sysmodule build_companion $(SYSMODULE_TARGET).nsp $(COMPANION_TARGET).nro $(SYSMODULE_TARGET).elf $(COMPANION_TARGET).elf $(SYSMODULE_TARGET).nso
 
 #---------------------------------------------------------------------------------
 else
+#---------------------------------------------------------------------------------
 
-DEPENDS	:=	$(OFILES:.o=.d)
+export OUTPUT	:=	$(TOPDIR)/$(TARGET)
+
+export VPATH	:=	$(foreach dir,$(SOURCES),$(TOPDIR)/$(dir)) \
+			$(foreach dir,$(DATA),$(TOPDIR)/$(dir))
+
+export DEPSDIR	:=	$(CURDIR)
+
+ifeq ($(TYPE),SYSMODULE)
+    # Sysmodule includes everything except companion_main.cpp
+    CPPFILES := $(filter-out %companion_main.cpp, $(foreach dir,$(SOURCES),$(wildcard $(TOPDIR)/$(dir)/*.cpp)))
+    CFILES   := $(foreach dir,$(SOURCES),$(wildcard $(TOPDIR)/$(dir)/*.c))
+    SFILES   := $(foreach dir,$(SOURCES),$(wildcard $(TOPDIR)/$(dir)/*.s))
+else
+    # Companion only includes companion_main.cpp
+    CPPFILES := $(foreach dir,$(SOURCES),$(wildcard $(TOPDIR)/$(dir)/companion_main.cpp))
+    CFILES   := 
+    SFILES   := 
+endif
+
+BINFILES	:=	$(foreach dir,$(DATA),$(wildcard $(TOPDIR)/$(dir)/*.*))
+
+# Filter out the directory part for OFILES to keep them in the current (build) directory
+export OFILES	:=	$(notdir $(CPPFILES:.cpp=.o)) $(notdir $(CFILES:.c=.o)) $(notdir $(SFILES:.s=.o)) \
+			$(notdir $(BINFILES:.bin=.bin.o))
+
+export INCLUDES	:=	$(foreach dir,$(INCLUDES),-I$(TOPDIR)/$(dir)) \
+			$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
+			-I$(LIBNX)/include
+
+.PHONY: all
 
 #---------------------------------------------------------------------------------
 # main targets
 #---------------------------------------------------------------------------------
-all	:	$(OUTPUT).nso $(OUTPUT).nsp
+ifeq ($(TYPE),SYSMODULE)
+all	:	$(OUTPUT).nsp
 
 $(OUTPUT).nsp	:	$(OUTPUT).nso $(TOPDIR)/template.npdm
 	@echo built ... $(notdir $@)
 	@build_nsp $(OUTPUT).nso $(TOPDIR)/template.npdm $@
 
 $(OUTPUT).nso	:	$(OUTPUT).elf
+else
+all	:	$(OUTPUT).nro
+
+$(OUTPUT).nro	:	$(OUTPUT).elf
+endif
 
 $(OUTPUT).elf	:	$(OFILES)
-
-$(OFILES_BIN)	:	$(BINFILES)
 
 #---------------------------------------------------------------------------------
 # recipes for compiling
@@ -137,7 +140,7 @@ $(OFILES_BIN)	:	$(BINFILES)
 	@echo $(notdir $<)
 	@$(AS) $(ASFLAGS) $< -o $@ $(ERROR_FILTER)
 
--include $(DEPENDS)
+-include $(notdir $(OFILES:.o=.d))
 
 #---------------------------------------------------------------------------------------
 endif
