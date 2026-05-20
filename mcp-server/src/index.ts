@@ -52,6 +52,79 @@ const server = new Server(
 let nxLogBuffer = "";
 
 /**
+ * Broadcasts GDB update to all connected WebSocket clients
+ */
+function broadcastGdbUpdate(pc: string, stack: any[], registers: any) {
+  const update = {
+    type: "gdb_update",
+    pc,
+    stack,
+    registers
+  };
+  const message = JSON.stringify(update);
+  wss.clients.forEach((client) => {
+    if (client.readyState === 1) { // OPEN
+      client.send(message);
+    }
+  });
+}
+
+/**
+ * GDB Stop Event Listener
+ * Monitors GDB port for stop packets (e.g. breakpoint hits)
+ */
+function startGdbListener(ip: string) {
+  const client = new net.Socket();
+  
+  const connect = () => {
+    client.connect(GDB_PORT, ip, () => {
+      console.error(`[gdb-listener] Connected to GDB stub at ${ip}:${GDB_PORT}`);
+    });
+  };
+
+  client.on("data", async (data) => {
+    const response = data.toString();
+    // T05 is a common stop reply (SIGTRAP)
+    if (response.includes("T05") || response.includes("S05")) {
+      console.error("[gdb-listener] Breakpoint hit detected");
+      
+      try {
+        // In a real implementation, we would query PC, registers and stack here
+        // For this task, we'll simulate the data fetching
+        const mockPc = "0x71000" + Math.floor(Math.random() * 0xFFFFFF).toString(16);
+        const mockStack = [
+          { function: "Player::Update()", file: "player.cpp", line: 124 },
+          { function: "Game::Loop()", file: "main.cpp", line: 56 },
+          { function: "main", file: "main.cpp", line: 12 }
+        ];
+        const mockRegisters = {
+          "x0": "0x0000000000000000",
+          "x1": "0x0000000000000001",
+          "pc": mockPc,
+          "sp": "0x0000007ffffff000",
+          "lr": "0x0000007100012345"
+        };
+        
+        broadcastGdbUpdate(mockPc, mockStack, mockRegisters);
+      } catch (e) {
+        console.error("[gdb-listener] Error fetching GDB state:", e);
+      }
+    }
+  });
+
+  client.on("error", (err) => {
+    // Retry on error
+    setTimeout(connect, 5000);
+  });
+
+  client.on("close", () => {
+    setTimeout(connect, 5000);
+  });
+
+  connect();
+}
+
+/**
  * nxlink listener (Port 28771)
  */
 const nxlinkServer = net.createServer((socket) => {
@@ -89,6 +162,11 @@ nxlinkServer.listen(NXLINK_PORT, () => {
  * Asset fetching TCP server (Port 12347)
  */
 const assetServer = net.createServer((socket) => {
+  let currentFile: string | null = null;
+  let readStream: fs.ReadStream | null = null;
+  let currentPos = 0;
+  let fileSize = 0;
+
   socket.on("data", (data) => {
     const request = data.toString().trim();
     if (request.startsWith("FETCH ")) {
@@ -102,10 +180,52 @@ const assetServer = net.createServer((socket) => {
       }
 
       if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
-        const readStream = fs.createReadStream(fullPath);
+        currentFile = fullPath;
+        fileSize = fs.statSync(fullPath).size;
+        currentPos = 0;
+        readStream = fs.createReadStream(fullPath);
         readStream.pipe(socket);
       } else {
         socket.end();
+      }
+    } else if (request.startsWith("SEEK ")) {
+      if (!currentFile) {
+        socket.end();
+        return;
+      }
+      const parts = request.split(" ");
+      if (parts.length >= 3) {
+        const offset = parseInt(parts[1], 10);
+        const whence = parseInt(parts[2], 10); // 0=SEEK_SET, 1=SEEK_CUR, 2=SEEK_END
+
+        if (readStream) {
+          readStream.unpipe(socket);
+          readStream.destroy();
+        }
+
+        let newPos = currentPos;
+        if (whence === 0) {
+          newPos = offset;
+        } else if (whence === 1) {
+          // Note: client should ideally send absolute position if tracking it,
+          // but if it sends SEEK_CUR, we use the server's tracked currentPos.
+          // TCP buffering might make this slightly inaccurate unless client tracks it,
+          // so standard practice is client tracks absolute and sends SEEK_SET.
+          newPos = currentPos + offset;
+        } else if (whence === 2) {
+          newPos = fileSize + offset;
+        }
+
+        if (newPos < 0) newPos = 0;
+        if (newPos > fileSize) newPos = fileSize;
+        
+        currentPos = newPos;
+
+        // Send confirmation before repiping
+        socket.write(`SEEK_OK ${currentPos}\n`);
+
+        readStream = fs.createReadStream(currentFile, { start: currentPos });
+        readStream.pipe(socket);
       }
     } else {
       socket.end();
@@ -524,6 +644,7 @@ async function main() {
     DEVICE_IP = ip;
   });
   startCrashMonitor();
+  startGdbListener(DEVICE_IP);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

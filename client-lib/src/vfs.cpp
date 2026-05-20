@@ -17,10 +17,12 @@
 
 typedef struct {
     int socket;
+    off_t offset;
 } net_file_t;
 
 static int g_udp_socket = -1;
 static void (*g_reload_cb)(const char* path) = NULL;
+static char g_pc_ip[64] = "127.0.0.1";
 
 static int net_open(struct _reent *r, void *fileStruct, const char *path, int flags, int mode) {
     (void)flags; (void)mode;
@@ -61,6 +63,7 @@ static int net_open(struct _reent *r, void *fileStruct, const char *path, int fl
     }
     
     file->socket = sock;
+    file->offset = 0;
     return 0;
 }
 
@@ -77,7 +80,9 @@ static int net_close(struct _reent *r, void *fd) {
 static ssize_t net_read(struct _reent *r, void *fd, char *ptr, size_t len) {
     net_file_t *file = (net_file_t *)fd;
     ssize_t ret = recv(file->socket, ptr, len, 0);
-    if (ret < 0) {
+    if (ret > 0) {
+        file->offset += ret;
+    } else if (ret < 0) {
         r->_errno = errno;
     }
     return ret;
@@ -90,10 +95,41 @@ static ssize_t net_write(struct _reent *r, void *fd, const char *ptr, size_t len
 }
 
 static off_t net_seek(struct _reent *r, void *fd, off_t pos, int dir) {
-    (void)fd; (void)pos; (void)dir;
-    // Seeking on a stream is hard without buffering, return error for now
-    r->_errno = ESPIPE;
-    return -1;
+    net_file_t *file = (net_file_t *)fd;
+    char buffer[1024];
+    
+    // Send SEEK command to server
+    snprintf(buffer, sizeof(buffer), "SEEK %lld %d\n", (long long)pos, dir);
+    if (send(file->socket, buffer, strlen(buffer), 0) < 0) {
+        r->_errno = errno;
+        return -1;
+    }
+    
+    // Receive confirmation. We must discard data currently in the buffer
+    // until we find the SEEK_OK response from the server.
+    char line[256];
+    int line_pos = 0;
+    while (true) {
+        char c;
+        if (recv(file->socket, &c, 1, 0) <= 0) {
+            r->_errno = EIO;
+            return -1;
+        }
+        
+        line[line_pos++] = c;
+        if (c == '\n') {
+            line[line_pos] = '\0';
+            if (strncmp(line, "SEEK_OK ", 8) == 0) {
+                off_t new_pos = atoll(line + 8);
+                file->offset = new_pos;
+                return new_pos;
+            }
+            line_pos = 0;
+        }
+        if (line_pos >= (int)sizeof(line) - 1) {
+            line_pos = 0;
+        }
+    }
 }
 
 static int net_fstat(struct _reent *r, void *fd, struct stat *st) {
@@ -139,8 +175,6 @@ static const devoptab_t net_devoptab = {
     NULL, // fchmod_r
     NULL, // utimes_r
 };
-
-static char g_pc_ip[64] = "127.0.0.1";
 
 Result auraNxInit(const char* pc_ip) {
     if (pc_ip) {

@@ -25,14 +25,14 @@ DATA		:=	data
 CFLAGS	:=	-g -Wall -O2 -ffunction-sections \
 			$(ARCH) $(DEFINES)
 
-CFLAGS	+=	-I$(CURDIR)/$(INCLUDES) -I$(LIBNX)/include
+CFLAGS	+=	-I$(CURDIR)/$(INCLUDES) -I$(LIBNX)/include -I$(DEVKITPRO)/portlibs/switch/include
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
 
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	:=	-specs=$(LIBNX)/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:=	-L$(LIBNX)/lib -lnx
+LIBS	:=	-L$(LIBNX)/lib -L$(DEVKITPRO)/portlibs/switch/lib -lnx -lmbedtls -lmbedx509 -lmbedcrypto
 
 #---------------------------------------------------------------------------------
 ifeq ($(strip $(TYPE)),)

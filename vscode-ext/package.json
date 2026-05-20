@@ -1,0 +1,70 @@
+{
+  "name": "aura-nx",
+  "displayName": "Aura-NX",
+  "description": "Aura-NX Development Tools for VS Code",
+  "version": "1.0.0",
+  "publisher": "aura-nx",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "aura-nx",
+          "title": "Aura-NX",
+          "icon": "resources/aura-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "aura-nx": [
+        {
+          "id": "auraTargets",
+          "name": "Targets"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "aura.captureScreen",
+        "title": "Aura: Capture Screen"
+      },
+      {
+        "command": "aura.refreshTargets",
+        "title": "Refresh Targets",
+        "icon": "$(refresh)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "aura.refreshTargets",
+          "when": "view == auraTargets",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.75.0",
+    "@types/node": "16.x",
+    "@typescript-eslint/eslint-plugin": "^5.53.0",
+    "@typescript-eslint/parser": "^5.53.0",
+    "eslint": "^8.34.0",
+    "typescript": "^4.9.5"
+  }
+}

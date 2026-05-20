@@ -1,5 +1,18 @@
 import { useState, useEffect } from 'react'
 import './App.css'
+import AuraTrace from './components/AuraTrace'
+
+interface StackFrame {
+  function: string;
+  file: string;
+  line: number;
+}
+
+interface GdbUpdate {
+  pc: string;
+  stack: StackFrame[];
+  registers: { [key: string]: string };
+}
 
 interface SwitchDevice {
   id: string;
@@ -19,6 +32,7 @@ const INITIAL_DEVICES: SwitchDevice[] = [
 function App() {
   const [devices, setDevices] = useState<SwitchDevice[]>(INITIAL_DEVICES);
   const [lastLog, setLastLog] = useState<string>("");
+  const [gdbUpdate, setGdbUpdate] = useState<GdbUpdate | null>(null);
 
   useEffect(() => {
     const socket = new WebSocket('ws://localhost:8081');
@@ -47,6 +61,12 @@ function App() {
           if (data.logs) {
             setLastLog(prev => (prev + data.logs).slice(-2000));
           }
+        } else if (data.type === 'gdb_update') {
+          setGdbUpdate({
+            pc: data.pc,
+            stack: data.stack || [],
+            registers: data.registers || {}
+          });
         }
       } catch (e) {
         console.error('Error parsing telemetry:', e);
@@ -109,6 +129,14 @@ function App() {
             </div>
           ))}
         </div>
+
+        {gdbUpdate && (
+          <AuraTrace 
+            pc={gdbUpdate.pc} 
+            stack={gdbUpdate.stack} 
+            registers={gdbUpdate.registers} 
+          />
+        )}
 
         <div className="log-viewer">
           <h3>Real-time Logs</h3>
