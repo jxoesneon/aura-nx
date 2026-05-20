@@ -67,11 +67,21 @@ jobs:
       - name: Prepare build environment
         run: |
           apt-get update && apt-get install -y make
-          dkp-pacman -Syu --noconfirm switch-tools
+          # Search for the tool
+          NSP_TOOL=$(find /opt/devkitpro -name build_nsp | head -n 1)
+          if [ -z "$NSP_TOOL" ]; then
+            NSP_TOOL=$(find /opt/devkitpro -name nx-builder | head -n 1)
+          fi
+          echo "NSP_TOOL=$NSP_TOOL" >> $GITHUB_ENV
           
       - name: Compile Switch artifacts (NSP & NRO)
         working-directory: sysmodule
-        run: make
+        run: |
+          # If we found the tool, use it in the environment
+          if [ ! -z "$NSP_TOOL" ]; then
+            export PATH=$(dirname $NSP_TOOL):$PATH
+          fi
+          make
 
       - name: Upload Switch artifacts
         uses: actions/upload-artifact@v4
