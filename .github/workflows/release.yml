@@ -60,29 +60,17 @@ jobs:
   build-switch:
     name: Build Switch Artifacts
     runs-on: ubuntu-latest
-    container: devkitpro/devkita64:latest
+    container: devkitpro/devkitpga:latest
     steps:
       - uses: actions/checkout@v4
       
       - name: Prepare build environment
         run: |
           apt-get update && apt-get install -y make
-          # Exhaustive search for any tool that can build NSP
-          find / -name "*build_nsp*" -executable 2>/dev/null || true
-          find / -name "*nx-builder*" -executable 2>/dev/null || true
           
       - name: Compile Switch artifacts (NSP & NRO)
         working-directory: sysmodule
-        run: |
-          # Try to locate and add to path
-          for tool in build_nsp nx-builder; do
-            TOOL_PATH=$(find /opt/devkitpro -name "$tool" -executable | head -n 1)
-            if [ ! -z "$TOOL_PATH" ]; then
-              export PATH=$(dirname $TOOL_PATH):$PATH
-              echo "Added $(dirname $TOOL_PATH) to PATH"
-            fi
-          done
-          make
+        run: make
 
       - name: Upload Switch artifacts
         uses: actions/upload-artifact@v4
