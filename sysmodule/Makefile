@@ -42,7 +42,7 @@ CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	:=	-specs=$(LIBNX)/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:=	-lnx
+LIBS	:=	-L$(LIBNX)/lib -lnx
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be before the library names

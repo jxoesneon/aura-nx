@@ -80,13 +80,13 @@ describe('MCP Server Logic Tests', () => {
   });
 
   describe('Asset Server Path Protection', () => {
-    // Use process.cwd() normalized
     const projectRoot = path.resolve(process.cwd());
 
     it('should allow valid relative paths within the project root', () => {
       const relativePath = path.join('assets', 'textures', 'player.png');
-      const { isSafe } = normalizeAndCheckPath(projectRoot, relativePath);
+      const { fullPath, isSafe } = normalizeAndCheckPath(projectRoot, relativePath);
       expect(isSafe).toBe(true);
+      expect(fullPath.toLowerCase().replace(/\\/g, '/')).toContain('player.png');
     });
 
     it('should block directory traversal attempts using "../"', () => {
@@ -95,7 +95,6 @@ describe('MCP Server Logic Tests', () => {
     });
 
     it('should block absolute paths outside the root', () => {
-      // Use a path definitely outside projectRoot
       const outsidePath = path.resolve(projectRoot, '..', 'forbidden.txt');
       const { isSafe } = normalizeAndCheckPath(projectRoot, outsidePath);
       expect(isSafe).toBe(false);

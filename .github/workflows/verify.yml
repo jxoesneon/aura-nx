@@ -37,6 +37,9 @@ jobs:
         run: |
           choco install make mingw -y
 
+      - name: Install root dependencies
+        run: npm install
+
       - name: Install mcp-server dependencies
         working-directory: mcp-server
         run: npm install
