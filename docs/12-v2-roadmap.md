@@ -5,7 +5,7 @@ While Aura-NX v1.x provides a robust foundational toolkit for autonomous Switch 
 ---
 
 ## 1. High-Performance Visual Telemetry (NVENC/JPEG)
-**The Problem**: v1.x uses a mocked screen capture stub. Raw framebuffer copies on the CPU are too slow for real-time AI visual analysis, often taking >100ms per frame.
+**The Problem**: v1.x uses a mocked screen capture stub. Raw framebuffer copies on the CPU are too slow for real-time AI visual analysis, often taking over 100ms per frame.
 
 **The v2.0.0 Solution**:
 *   **Hardware MJPEG**: Utilize the Tegra X1's dedicated JPEG engine via the `nvhost-nvjpg` device. This allows for ~60fps frame capture with <1% CPU overhead.
