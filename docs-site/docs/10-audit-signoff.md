@@ -17,7 +17,7 @@ A comprehensive technical and security audit was conducted on May 20, 2026. The 
 | **MCP Server** | PASS | Validated path traversal protection; secure process execution; high-performance WebSocket bridge. |
 | **Client Library** | PASS | Compliant `devoptab` implementation; configurable LAN targets. |
 | **Testing** | PASS | 100% pass rate across Unit, Integration, and Simulated Hardware tiers. |
-| **CI/CD** | PASS | Automated GitHub Actions workflow covering all institutional verification tiers. |
+| **CI/CD** | PASS | Automated GitHub Actions workflow covering all enterprise verification tiers. |
 
 ## Recommendations for v1.2.0:
 *   Implement `net_seek` in the client VFS for better compatibility with legacy engine loaders.
@@ -25,4 +25,4 @@ A comprehensive technical and security audit was conducted on May 20, 2026. The 
 *   Expand the Dashboard with a live 3D memory heatmap visualization.
 
 **Audit Status:** APPROVED
-**Institutional Grade:** AA (Industry Leading)
+**enterprise Grade:** AA (Industry Leading)

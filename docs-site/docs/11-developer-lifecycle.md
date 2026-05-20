@@ -4,7 +4,7 @@ This document provides a comprehensive end-to-end walkthrough of the developer e
 
 ---
 
-## Phase 1: Institutional Setup (The First Hour)
+## Phase 1: enterprise Setup (The First Hour)
 
 Before writing code, the studio establishes the "Aura-NX Command Center."
 
@@ -51,7 +51,7 @@ Aura-NX provides the "God Mode" required for autonomous development.
 
 ---
 
-## Phase 4: Profiling & Institutional QA
+## Phase 4: Profiling & enterprise QA
 
 Moving from "it works" to "it's AAA-grade."
 
@@ -63,7 +63,7 @@ Moving from "it works" to "it's AAA-grade."
     *   The dump is streamed to the PC. The MCP server symbolicates the stack trace and posts a detailed bug report to GitHub/Linear, including the exact line of code and a hardware state snapshot.
 3.  **HIL (Hardware-in-the-Loop) Verification**:
     *   The `verify_all.sh` script runs in the studio's CI pipeline.
-    *   It verifies that the current build maintains the 16MB memory ceiling and that the telemetry latency remains within institutional tolerances.
+    *   It verifies that the current build maintains the 16MB memory ceiling and that the telemetry latency remains within enterprise tolerances.
 
 ---
 
@@ -80,4 +80,4 @@ Finalizing the "Gold" master.
 
 ---
 
-**Aura-NX transforms Switch development from a manual, hardware-constrained struggle into a high-performance, AI-augmented institutional pipeline.**
+**Aura-NX transforms Switch development from a manual, hardware-constrained struggle into a high-performance, AI-augmented enterprise pipeline.**

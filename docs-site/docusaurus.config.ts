@@ -3,12 +3,12 @@ import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
-  title: 'Aura-NX Institutional Portal',
-  tagline: 'High-Precision Console Development & Institutional Infrastructure',
+  title: 'Aura-NX enterprise Portal',
+  tagline: 'High-Precision Console Development & enterprise Infrastructure',
   favicon: 'img/favicon.ico',
 
   url: "https://jxoesneon.github.io",
-  baseUrl: "/aura-nx/",
+  baseUrl: "/",
 
   organizationName: "jxoesneon",
   projectName: "aura-nx",
@@ -110,7 +110,7 @@ const config: Config = {
           title: 'Development',
           items: [
             {
-              label: 'Institutional Wiki',
+              label: 'enterprise Wiki',
               href: 'https://github.com/jxoesneon/aura-nx/wiki',
             },
             {
@@ -131,7 +131,7 @@ const config: Config = {
               href: 'https://github.com/jxoesneon/aura-nx',
             },
             {
-              label: 'Institutional Chat',
+              label: 'enterprise Chat',
               href: 'https://discord.gg/aura-nx',
             },
           ],
