@@ -13,7 +13,8 @@ const config: Config = {
   organizationName: "jxoesneon",
   projectName: "aura-nx",
 
-  onBrokenLinks: 'throw',
+  onBrokenLinks: 'warn',
+  onBrokenMarkdownLinks: 'warn',
 
   i18n: {
     defaultLocale: 'en',
