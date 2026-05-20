@@ -13,12 +13,12 @@ jobs:
     name: Build PC MCP Server
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: mcp-server/package-lock.json
 
@@ -52,7 +52,7 @@ jobs:
           [ -f index-macos-arm64 ] && mv index-macos-arm64 aura-nx-mcp-macos-arm64 || true
 
       - name: Upload MCP artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mcp-binaries
           path: mcp-server/binaries/aura-nx-mcp-*
@@ -62,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     container: devkitpro/devkita64:latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       
       - name: Prepare build environment
         run: |
@@ -74,7 +74,7 @@ jobs:
         run: make
         
       - name: Upload Switch artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: switch-artifacts
           path: |
@@ -88,7 +88,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
 
@@ -99,7 +99,7 @@ jobs:
           ls -R release-assets/
 
       - name: GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: release-assets/*
           generate_release_notes: true
