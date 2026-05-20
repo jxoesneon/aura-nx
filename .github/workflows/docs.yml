@@ -3,16 +3,16 @@ name: Deploy Documentation
 on:
   push:
     branches: [main]
-    paths:
-      - 'docs-site/**'
-      - 'docs/**'
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
-  deploy:
-    name: Deploy to GitHub Pages
+  build:
+    name: Build Documentation
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -31,14 +31,27 @@ jobs:
         run: npm install
 
       - name: Sync docs folder
-        run: cp -r docs/*.md docs-site/docs/
+        run: |
+          mkdir -p docs-site/docs
+          cp -r docs/*.md docs-site/docs/
 
       - name: Build Docusaurus
         working-directory: docs-site
         run: npm run build
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs-site/build
+          path: docs-site/build
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
