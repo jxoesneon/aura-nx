@@ -4,8 +4,6 @@
 
 [mcp-server](../README.md) / save\_manager
 
-# save\_manager
-
 ## Functions
 
 - [backupSave](functions/backupSave.md)

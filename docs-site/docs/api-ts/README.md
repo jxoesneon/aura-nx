@@ -2,8 +2,6 @@
 
 ***
 
-# mcp-server
-
 ## Modules
 
 - [capture](capture/README.md)

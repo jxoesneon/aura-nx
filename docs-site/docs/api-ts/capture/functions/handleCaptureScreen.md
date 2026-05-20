@@ -4,11 +4,9 @@
 
 [mcp-server](../../README.md) / [capture](../README.md) / handleCaptureScreen
 
-# Function: handleCaptureScreen()
-
 > **handleCaptureScreen**(`ip`): `Promise`\<`string`\>
 
-Defined in: [capture.ts:9](https://github.com/jxoesneon/aura-nx/blob/9e274c37fbdc51fd698275d695ab06a38b27abd0/mcp-server/src/capture.ts#L9)
+Defined in: [capture.ts:9](https://github.com/jxoesneon/aura-nx/blob/2c9647e83da67127679e3eeb001b86cfacad009e/mcp-server/src/capture.ts#L9)
 
 Requests a screen capture frame from the Aura-NX sysmodule.
 

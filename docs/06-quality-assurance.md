@@ -1,6 +1,6 @@
 # 6. Quality Assurance (QA)
 
-Aura-NX employs a multi-layered testing strategy to ensure reliability in high-pressure AAA development environments.
+Aura-NX employs a multi-layered testing strategy to ensure reliability in high-pressure professional development environments.
 
 ## Testing Layers
 

@@ -1,6 +1,6 @@
 # Contributing to Aura-NX
 
-Thank you for your interest in improving Aura-NX. As an institutional-grade project, we maintain a high standard for contributions to ensure the stability and security of the Nintendo Switch ecosystem.
+Thank you for your interest in improving Aura-NX. As an Enterprise-Grade project, we maintain a high standard for contributions to ensure the stability and security of the Nintendo Switch ecosystem.
 
 ## Contribution Workflow
 

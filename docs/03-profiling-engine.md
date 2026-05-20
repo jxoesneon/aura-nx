@@ -3,7 +3,7 @@
 To allow AI agents to automatically diagnose performance bottlenecks, Aura-NX implements remote profiling using Horizon OS services.
 
 ## Micro-Architectural Profiling (PMU)
-For AAA-grade optimization, Aura-NX provides nanosecond-precision telemetry.
+For high-fidelity optimization, Aura-NX provides nanosecond-precision telemetry.
 
 *   **Metric:** `PMCCNTR_EL0` (Cycle Count)
 *   **Resolution:** ~1.02 GHz (approx 0.98ns per cycle).

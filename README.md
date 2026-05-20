@@ -1,84 +1,84 @@
-# Aura-NX Debug MCP (v2.0.0 Enterprise)
+# Aura-NX: Advanced Console Engineering Framework
 
-**Aura-NX** is an institutional-grade, Model Context Protocol (MCP) server architecture designed for AAA-grade Nintendo Switch (NX) homebrew development.
+**Aura-NX** is an elite, Enterprise-grade Model Context Protocol (MCP) server architecture engineered for AAA Nintendo Switch (NX) development ecosystems. It bridges the gap between raw hardware and developer intuition, delivering **Total Observability**, **Zero-Latency Asset Pushing**, and **High-Fidelity Telemetry**.
 
-## 🚀 v2.0.0 Enterprise Features
+## 🚀 Elite Infrastructure Capabilities
 
-*   **Mutual TLS (mTLS):** Certificate-based authentication for secure studio networks.
-*   **Fleet Management:** SQLite-backed persistent tracking for hundreds of console targets.
-*   **Cycle-Accurate Profiling:** Micro-architectural telemetry via `PMCCNTR_EL0`.
-*   **Hardware Video Streaming:** High-performance H.264 streaming scaffolds.
-*   **1-Click AI Setup:** Instant configuration for 21+ AI editors (Claude, Cursor, etc.).
-*   **CI/CD Pipeline:** Automated cross-platform builds (x64/arm) and HIL testing.
+*   **Mutual TLS (mTLS):** Sophisticated certificate-based authentication securing studio-wide console networks.
+*   **Fleet Orchestration:** SQLite-backed persistent tracking and management for large-scale console deployments.
+*   **Micro-Architectural Analysis:** Precision telemetry and cycle-accurate profiling via `PMCCNTR_EL0`.
+*   **Hardware-Accelerated Streaming:** High-performance H.264 visual streaming pipelines for remote debugging.
+*   **Instant AI Integration:** Seamless configuration for 21+ advanced AI editors (Claude, Cursor, etc.).
+*   **Enterprise CI/CD:** Automated cross-platform build pipelines (x64/arm) with Hardware-In-the-Loop (HIL) validation.
 
 ---
 
-## 🛠️ Quick Start
+## 🛠️ Rapid Integration
 
-### 1. Automated AI Setup (Recommended)
-Automatically configure your favorite AI editor (Claude, Cursor, Aider, etc.) to use Aura-NX:
+### 1. Automated AI Orchestration (Recommended)
+Instantly configure your AI development environment to leverage the full power of Aura-NX:
 ```bash
 ./setup-mcp.sh
 ```
 
-### 2. Switch Deployment
-Download the latest **`aura_nx_sysmodule.nsp`** and **`aura_nx_companion.nro`** from the [Releases](https://github.com/jxoesneon/aura-nx/releases) page.
-*   Copy `.nsp` to `/atmosphere/contents/`
-*   Reboot and connect to LAN.
+### 2. Hardware Deployment
+Acquire the latest **`aura_nx_sysmodule.nsp`** and **`aura_nx_companion.nro`** from the [Advanced Releases](https://github.com/jxoesneon/aura-nx/releases) portal.
+*   Deploy `.nsp` to `/atmosphere/contents/`
+*   Initialize system and establish network link.
 
-### 3. mTLS Security Setup
-Generate your studio certificates before starting the server:
+### 3. Secure Protocol Setup
+Generate studio-grade mTLS certificates to establish your secure trust perimeter:
 ```bash
 ./scripts/generate_certs.sh
 ```
 
 ---
 
-## 🔌 Network & Port Configuration
+## 🔌 Unified Port Mapping
 
-| Port | Protocol | Service | Description |
+| Port | Protocol | Service | Strategic Impact |
 | :--- | :--- | :--- | :--- |
-| **22225** | TCP | **GDB (mTLS)** | Remote execution & breakpoints. |
-| **28771** | TCP | **nxlink (mTLS)** | Live console logs. |
-| **12346** | TCP | **Sysmodule** | JSON-RPC Hardware Telemetry. |
-| **12347** | TCP | **VFS Server** | High-speed asset streaming. |
-| **12348** | UDP | **VFS Reload** | Instant hot-reload signaling. |
-| **8081** | WS | **Telemetry** | Live Dashboard WebSocket. |
-| **12349** | UDP | **Discovery** | Zero-config target auto-find. |
-| **12350** | TCP | **Crash Monitor** | Automated dump ingestion. |
+| **22225** | TCP | **GDB (mTLS)** | Remote execution control & precision breakpoints. |
+| **28771** | TCP | **nxlink (mTLS)** | Real-time console diagnostic streaming. |
+| **12346** | TCP | **Sysmodule** | JSON-RPC Hardware Telemetry & Command Link. |
+| **12347** | TCP | **VFS Server** | Zero-latency remote asset synchronization. |
+| **12348** | UDP | **VFS Reload** | Immediate mid-frame asset hot-swapping. |
+| **8081** | WS | **Telemetry** | Live Analytics Dashboard & Visual Insight. |
+| **12349** | UDP | **Discovery** | Automated target identification & zero-config pairing. |
+| **12350** | TCP | **Crash Monitor** | High-velocity automated dump ingestion & analysis. |
 
 ---
 
-## 🧰 Available MCP Tools
+## 🧰 Professional Toolset
 
-*   `read_gpu_load` / `read_pmu_counters`: Precision hardware metrics.
-*   `set_breakpoint`: Source-level execution control.
-*   `capture_screen`: Hardware-accelerated visual frame capture.
-*   `reload_asset`: Instant mid-frame asset swapping.
-*   `send_input`: Automated gameplay/UI input injection.
-*   `backup_save` / `restore_save`: Persistent state management.
-*   `get_fleet_status`: Overview of all discovered studio consoles.
+*   `read_gpu_load` / `read_pmu_counters`: Elite hardware performance metrics.
+*   `set_breakpoint`: Total execution control at the source level.
+*   `capture_screen`: Hardware-accelerated frame capture for visual validation.
+*   `reload_asset`: Instantaneous mid-frame asset deployment.
+*   `send_input`: Automated gameplay logic & UI interaction injection.
+*   `backup_save` / `restore_save`: Robust persistent state orchestration.
+*   `get_fleet_status`: Comprehensive visibility into the active studio console fleet.
 
 ---
 
-## 📚 Documentation Index
+## 📚 Engineering Documentation
 
 ### Technical Specifications
 1. [Architecture Overview](docs/01-architecture.md)
 2. [Debugging Protocol](docs/02-debugging-protocol.md)
 3. [Profiling Engine](docs/03-profiling-engine.md)
 4. [Asset Hot-Reloading](docs/04-asset-hot-reload.md)
-13. [v2.0.0 Architecture Deep-Dive](docs/13-v2-architecture.md)
+13. [Advanced Architecture Deep-Dive](docs/13-v2-architecture.md)
 
-### Institutional Standards
+### Enterprise Engineering Standards
 5. [Development Lifecycle](docs/05-development-lifecycle.md)
-6. [Quality Assurance & Testing](docs/06-quality-assurance.md)
-7. [Security Posture](docs/07-security-posture.md)
+6. [Quality Assurance & Validation](docs/06-quality-assurance.md)
+7. [Security Posture & Trust](docs/07-security-posture.md)
 8. [Release Operations](docs/08-release-ops.md)
-10. [Audit Sign-off](docs/10-audit-signoff.md)
+10. [Audit & Compliance Sign-off](docs/10-audit-signoff.md)
 11. [Developer Lifecycle Handbook](docs/11-developer-lifecycle.md)
-12. [Technical Advisory](docs/12-v2-roadmap.md)
+12. [Strategic Advisory & Roadmap](docs/12-v2-roadmap.md)
 
-### Community & AI
-*   [SKILL.md (AI Agent Training)](SKILL.md)
+### AI & Collaborative Ecosystem
+*   [SKILL.md (AI Agent Synthesis)](SKILL.md)
 *   [Contributing](CONTRIBUTING.md) | [Code of Conduct](CODE_OF_CONDUCT.md)

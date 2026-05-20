@@ -4,8 +4,6 @@
 
 [mcp-server](../../README.md) / [db](../README.md) / default
 
-# Variable: default
-
 > `const` **default**: `Database`
 
-Defined in: [db.ts:45](https://github.com/jxoesneon/aura-nx/blob/9e274c37fbdc51fd698275d695ab06a38b27abd0/mcp-server/src/db.ts#L45)
+Defined in: [db.ts:45](https://github.com/jxoesneon/aura-nx/blob/2c9647e83da67127679e3eeb001b86cfacad009e/mcp-server/src/db.ts#L45)

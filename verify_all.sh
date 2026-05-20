@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "=== Aura-NX Institutional-Grade Verification Suite ==="
+echo "=== Aura-NX Enterprise-Grade Verification Suite ==="
 echo ""
 
 # 0. Linting & Formatting

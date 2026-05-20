@@ -1,6 +1,6 @@
 # 13. Aura-NX v2.0.0 Enterprise Architecture
 
-The v2.0.0 "Enterprise" release of Aura-NX marks the transition from a specialized debugging tool to a full-scale institutional development platform. This architecture focuses on security, scalability, and micro-architectural precision.
+The v2.0.0 "Enterprise" release of Aura-NX marks the transition from a specialized debugging tool to a full-scale professional development platform. This architecture focuses on security, scalability, and micro-architectural precision.
 
 ---
 

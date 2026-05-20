@@ -1,17 +1,17 @@
 # 5. Development Lifecycle
 
-Aura-NX follows an institutional-grade lifecycle model based on AAA console development standards. This ensures that tools are robust, performant, and reliable across all phases of development.
+Aura-NX adheres to a rigorous development lifecycle modeled after first-party console engineering standards. This methodology ensures stability, performance, and deterministic behavior across all development phases.
 
 ## Project Phases
 
 ### 1. Planning & Specification (Phase 0)
 *   **Deliverable:** Technical Design Document (TDD) and IPC Interface Specification.
-*   **Goal:** Define the exact `nvdrv` hooks and network protocols to be implemented. Define success metrics (e.g., latency &lt; 16ms for hot-reloads).
+*   **Goal:** Define the exact `nvdrv` hooks and network protocols to be implemented. Define success metrics (e.g., latency < 16ms for hot-reloads).
 
 ### 2. Alpha (Feature Complete)
 *   **Definition:** Core sysmodule logic, GDB bridge, and Network VFS are functional.
 *   **Focus:** Functionality over stability. Features are "wired up" but not yet optimized.
-*   **Exit Criteria:** All core MCP tools return successful responses on real hardware.
+*   **Exit Criteria:** All core tools return successful responses on target hardware.
 
 ### 3. Beta (Stability & Content Complete)
 *   **Definition:** No new features added. Focus shifts to memory management and performance tuning.

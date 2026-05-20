@@ -1,7 +1,7 @@
 # Aura-NX Audit Sign-off: v1.1.0
 
 ## Audit Summary
-A comprehensive technical and security audit was conducted on May 20, 2026. The Aura-NX project has been verified to meet institutional-grade standards for console development tools.
+A comprehensive technical and security audit was conducted on May 20, 2026. The Aura-NX project has been verified to meet Enterprise-Grade standards for console development tools.
 
 ### Key Remediation Tasks Completed:
 1.  **Security (Command Injection)**: Replaced `exec` with `execFile` in the MCP Server's symbolication engine to eliminate risks from unsanitized input.

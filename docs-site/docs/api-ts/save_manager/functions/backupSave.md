@@ -4,11 +4,9 @@
 
 [mcp-server](../../README.md) / [save\_manager](../README.md) / backupSave
 
-# Function: backupSave()
-
 > **backupSave**(`ip`, `name`): `Promise`\<`string`\>
 
-Defined in: [save\_manager.ts:12](https://github.com/jxoesneon/aura-nx/blob/9e274c37fbdc51fd698275d695ab06a38b27abd0/mcp-server/src/save_manager.ts#L12)
+Defined in: [save\_manager.ts:12](https://github.com/jxoesneon/aura-nx/blob/2c9647e83da67127679e3eeb001b86cfacad009e/mcp-server/src/save_manager.ts#L12)
 
 Sends a JSON-RPC backup_save command to the sysmodule.
 

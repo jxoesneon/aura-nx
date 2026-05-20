@@ -1,6 +1,6 @@
 # 4. Asset Hot-Reloading (Network VFS)
 
-To provide an industry-leading AAA workflow, Aura-NX bypasses the SD card entirely for asset development, streaming directly from the PC.
+To provide a high-performance engineering workflow, Aura-NX bypasses the SD card entirely for asset development, streaming directly from the PC.
 
 ## Why Not LayeredFS (`fs-mitm`)?
 Atmosphere's `fs-mitm` is excellent for static RomFS modding, but dynamic runtime file swapping is too slow and structurally rigid for instant "hot reloading" of textures and shaders.

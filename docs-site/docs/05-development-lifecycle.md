@@ -1,6 +1,6 @@
 # 5. Development Lifecycle
 
-Aura-NX follows an institutional-grade lifecycle model based on AAA console development standards. This ensures that tools are robust, performant, and reliable across all phases of development.
+Aura-NX follows an Enterprise-Grade lifecycle model based on AAA console development standards. This ensures that tools are robust, performant, and reliable across all phases of development.
 
 ## Project Phases
 

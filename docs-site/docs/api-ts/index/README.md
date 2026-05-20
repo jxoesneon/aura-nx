@@ -3,5 +3,3 @@
 ***
 
 [mcp-server](../README.md) / index
-
-# index
