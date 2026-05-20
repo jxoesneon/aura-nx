@@ -1,4 +1,4 @@
-# 12. Aura-NX v2.0.0: The enterprise Technical Advisory
+# 12. Aura-NX v2.0.0: The Enterprise Technical Advisory
 
 While Aura-NX v1.x provides a robust foundational toolkit for autonomous Switch development, pushing the platform to "Industry Best" requires overcoming several low-level hardware and security hurdles. This document details the technical roadmap for the v2.0.0 "Enterprise" release.
 
@@ -12,7 +12,7 @@ While Aura-NX v1.x provides a robust foundational toolkit for autonomous Switch 
 *   **H.264 Stream**: For fluid remote gameplay monitoring, we will integrate with the Horizon OS `grc:d` (Game Recording Control) service. This is the same engine used for the console's native "Record" button, providing highly optimized H.264 encoding.
 *   **DMA-BUF Zero-Copy**: Implement shared memory mapping between the game's framebuffer and the encoder engine to eliminate expensive memory copies.
 
-## 2. enterprise Security: Mutual TLS (mTLS)
+## 2. Enterprise Security: Mutual TLS (mTLS)
 **The Problem**: v1.x uses raw TCP/UDP. In a shared studio network, telemetry and proprietary asset bundles are vulnerable to sniffing or unauthorized injection.
 
 **The v2.0.0 Solution**:

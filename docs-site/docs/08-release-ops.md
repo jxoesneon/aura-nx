@@ -14,7 +14,7 @@ Aura-NX follows [Semantic Versioning 2.0.0](https://semver.org/).
 | :--- | :--- | :--- |
 | **Nightly** | Contributors / Testers | Bleeding edge. High risk of crashes. |
 | **Beta** | Early Adopters | Feature complete. Undergoing HIL testing. |
-| **Stable** | Production Teams | enterprise grade. Verified through the full QA lifecycle. |
+| **Stable** | Production Teams | Enterprise grade. Verified through the full QA lifecycle. |
 
 ## Build & Packaging
 

@@ -1,4 +1,4 @@
-# 9. Aura-NX v1.0.0 Roadmap: enterprise Niceties
+# 9. Aura-NX v1.0.0 Roadmap: Enterprise Niceties
 
 While the core of Aura-NX provides robust execution control, telemetry, and asset streaming, AAA console development environments (like those for PS5 or Xbox Series X) offer Quality-of-Life (QoL) "niceties" that drastically reduce friction.
 
@@ -31,7 +31,7 @@ Currently, analyzing a crash requires manually copying `report_xxxx.bin` from th
 *   **Benefit:** An AI agent is proactively notified of crashes with the exact line of code that faulted, allowing it to begin debugging before the human developer even realizes a crash occurred.
 
 ## 4. Aura Target Manager (Fleet Dashboard)
-enterprise development requires managing fleets of hardware (Programmers, Artists, QA).
+Enterprise development requires managing fleets of hardware (Programmers, Artists, QA).
 
 ### Implementation Plan:
 *   **Dashboard Server:** The MCP Server will optionally host a lightweight web dashboard (React/Vite) served on port `8080`.
