@@ -103,7 +103,7 @@ const config: Config = {
           items: [
             {
               label: 'Portal',
-              to: '/docs/01-architecture',
+              to: '/docs/architecture',
             },
           ],
         },
