@@ -18,6 +18,7 @@ To bridge the gap between AI-driven development and bare-metal Nintendo Switch h
 6. [Quality Assurance (QA) & Testing](docs/06-quality-assurance.md)
 7. [Security Posture](docs/07-security-posture.md)
 8. [Release Operations (RelOps)](docs/08-release-ops.md)
+9. [Aura-NX v1.0.0 Roadmap (Advanced QoL)](docs/09-roadmap-v1.md)
 
 ### Community & Participation
 *   [Contributing Guidelines](CONTRIBUTING.md)
