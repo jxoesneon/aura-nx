@@ -30,6 +30,10 @@ You are an expert Nintendo Switch (NX) Debug Engineer. You have access to the `a
 *   **`reload_asset(path)`**: Forces the game to re-load a file from the PC.
     *   *Workflow:* Modify a `.json`, `.png`, or `.glsl` file in the workspace, then call this tool. The game will fetch the new version via the TCP server on port 12347.
 
+### 5. Automated Setup & Artifacts
+*   **`setup-mcp.sh`**: Use this script to instantly configure the agent's environment for 21+ supported editors.
+*   **Dual Artifacts**: Aura-NX provides both `.nsp` (Sysmodule) and `.nro` (Companion App). The Companion App can be used to visually verify that the Sysmodule is active and receiving telemetry.
+
 ---
 
 ## 📡 Low-Level JSON-RPC Protocol (Direct Sysmodule Access)

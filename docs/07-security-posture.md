@@ -8,10 +8,11 @@ Aura-NX is designed to be a high-privilege development tool. Its security model 
 *   **Service Access Control (SAC):** The sysmodule implements strict SAC whitelisting within its `.npdm` file. Only processes with the appropriate `ProgramId` or `ServiceAccess` permissions can interface with Aura-NX.
 *   **PID Verification:** For sensitive operations (e.g., memory mapping or process injection), Aura-NX validates the caller's PID using the kernel's `svcGetProcessId` to ensure the request is originating from an authorized development agent.
 
-### 2. Network Security
-Since Aura-NX exposes the Switch to a LAN, the following precautions are mandatory:
-*   **Authenticated Handshake:** The PC Orchestrator must provide a pre-shared key (PSK) or token during the initial TCP connection.
-*   **Bounds Checking:** All network packets (especially VFS asset paths and command buffers) are strictly validated. Any malformed packet results in an immediate connection termination to prevent buffer overflow exploits.
+### 2. Network Security (mTLS)
+Aura-NX v2.0.0 enforces **Mutual TLS (mTLS)** for all LAN communication.
+*   **Certificate Authority (CA):** Studios must generate a local CA using `scripts/generate_certs.sh`.
+*   **Mutual Authentication:** Both the MCP Server and the Switch Sysmodule must present valid certificates signed by the Studio CA. The server will `rejectUnauthorized: true` any connection from an unknown or unsigned device.
+*   **Encrypted Payloads:** All telemetry, logs, and asset data are encrypted in transit using TLS 1.3, preventing sniffing on shared networks.
 *   **Non-Blocking I/O:** The network loop uses `O_NONBLOCK`. This prevents a malicious or slow network peer from "hanging" the sysmodule, which could otherwise trigger a system-wide OS hang (Horizon OS watchdog timeout).
 
 ### 3. Execution Integrity

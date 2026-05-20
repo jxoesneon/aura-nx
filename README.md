@@ -1,92 +1,63 @@
 # Aura-NX Debug MCP (v2.0.0 Enterprise)
 
-**Aura-NX** is an institutional-grade, Model Context Protocol (MCP) server architecture designed for AAA-grade Nintendo Switch (NX) homebrew development. It provides a robust, secure, and professional development environment for autonomous AI agent swarms to debug, profile, and hot-reload Switch applications over a LAN connection.
+**Aura-NX** is an institutional-grade, Model Context Protocol (MCP) server architecture designed for AAA-grade Nintendo Switch (NX) homebrew development.
 
 ## 🚀 v2.0.0 Enterprise Features
 
-*   **Mutual TLS (mTLS):** Certificate-based authentication between PC and Switch for secure studio networks.
-*   **Fleet Management:** SQLite-backed persistent tracking and mass command dispatch for hundreds of console targets.
-*   **Cycle-Accurate Profiling:** Micro-architectural telemetry via `PMCCNTR_EL0` and raw PMU counter access.
-*   **Hardware Video Streaming:** High-performance H.264 streaming using the Horizon `grc:d` service.
+*   **Mutual TLS (mTLS):** Certificate-based authentication for secure studio networks.
+*   **Fleet Management:** SQLite-backed persistent tracking for hundreds of console targets.
+*   **Cycle-Accurate Profiling:** Micro-architectural telemetry via `PMCCNTR_EL0`.
+*   **Hardware Video Streaming:** High-performance H.264 streaming scaffolds.
+*   **1-Click AI Setup:** Instant configuration for 21+ AI editors (Claude, Cursor, etc.).
+*   **CI/CD Pipeline:** Automated cross-platform builds (x64/arm) and HIL testing.
 
-## 🏗️ Architecture
+---
 
-The Aura-NX ecosystem is split into three primary layers, facilitating seamless communication between AI agents and bare-metal hardware.
+## 🛠️ Quick Start
 
-### 1. PC Orchestrator (Node.js MCP Server)
-Acts as the central nervous system. It translates high-level AI intents (via JSON-RPC MCP) into low-level socket commands for the Switch. It hosts the Asset VFS and the Telemetry broadcast engine.
+### 1. Automated AI Setup (Recommended)
+Automatically configure your favorite AI editor (Claude, Cursor, Aider, etc.) to use Aura-NX:
+```bash
+./setup-mcp.sh
+```
 
-### 2. Switch Implementation (Aura Sysmodule)
-A custom background process running on the Nintendo Switch (Horizon OS). It hooks into system services like `nvdrv` for GPU load and `clkrst` for hardware clocks, exposing them via a specialized JSON-RPC interface.
+### 2. Switch Deployment
+Download the latest **`aura_nx_sysmodule.nsp`** and **`aura_nx_companion.nro`** from the [Releases](https://github.com/jxoesneon/aura-nx/releases) page.
+*   Copy `.nsp` to `/atmosphere/contents/`
+*   Reboot and connect to LAN.
 
-### 3. Application Layer (Client Lib)
-A lightweight integration embedded in the homebrew application. It provides the `devoptab` interface for the Network VFS and a UDP listener for instant asset hot-reloading signals.
+### 3. mTLS Security Setup
+Generate your studio certificates before starting the server:
+```bash
+./scripts/generate_certs.sh
+```
 
 ---
 
 ## 🔌 Network & Port Configuration
 
-Aura-NX utilizes a specific set of ports for various telemetry and control streams. Ensure your firewall allows these over the LAN.
-
 | Port | Protocol | Service | Description |
 | :--- | :--- | :--- | :--- |
-| **22225** | TCP | **GDB** | Standard Atmosphere GDB stub for remote debugging. |
-| **28771** | TCP | **nxlink** | Standard `stdout`/`stderr` redirection for libnx logs. |
-| **12346** | TCP | **Sysmodule** | Aura-NX JSON-RPC interface for GPU/Input/Screen capture. |
-| **12347** | TCP | **VFS Server** | PC-side file server for streaming assets to the Switch. |
-| **12348** | UDP | **VFS Reload** | UDP signaling for instant asset cache invalidation. |
-| **8081** | WS | **Telemetry** | WebSocket stream for the Target Manager Dashboard. |
-
----
-
-## 🛠️ Setup Process
-
-### 1. Switch Console Setup
-1.  Copy the `aura-sysmodule` (from `sysmodule/`) to `/atmosphere/contents/0123456789ABCDEF/` (replace with actual Program ID).
-2.  Ensure Atmosphere is running with `debugmode=1` in `system_settings.ini`.
-3.  Connect the Switch to the same LAN as your PC and note its IP address.
-
-### 2. PC Setup
-1.  **Clone the Repository:**
-    ```bash
-    git clone https://github.com/your-org/aura-nx.git
-    cd aura-nx
-    ```
-2.  **Install Dependencies:**
-    ```bash
-    npm install
-    ```
-3.  **Configure Environment:**
-    Set the `AURA_DEVICE_IP` environment variable or create a `.env` file:
-    ```bash
-    export AURA_DEVICE_IP=192.168.1.100
-    ```
-4.  **Launch the MCP Server:**
-    ```bash
-    npm start
-    ```
-
-### 3. Application Integration
-Link your project with `client-lib/` and initialize the Aura-NX client:
-```cpp
-#include <aura/vfs.h>
-// ...
-auraVfsInit("192.168.1.50"); // Your PC IP
-```
+| **22225** | TCP | **GDB (mTLS)** | Remote execution & breakpoints. |
+| **28771** | TCP | **nxlink (mTLS)** | Live console logs. |
+| **12346** | TCP | **Sysmodule** | JSON-RPC Hardware Telemetry. |
+| **12347** | TCP | **VFS Server** | High-speed asset streaming. |
+| **12348** | UDP | **VFS Reload** | Instant hot-reload signaling. |
+| **8081** | WS | **Telemetry** | Live Dashboard WebSocket. |
+| **12349** | UDP | **Discovery** | Zero-config target auto-find. |
+| **12350** | TCP | **Crash Monitor** | Automated dump ingestion. |
 
 ---
 
 ## 🧰 Available MCP Tools
 
-Aura-NX exposes the following tools to AI agents:
-
-*   `read_gpu_load`: Returns the current Tegra GPU utilization as a percentage.
-*   `set_breakpoint`: Interacts with the GDB stub to set hardware/software breakpoints at specific hex addresses.
-*   `get_nxlink_logs`: Fetches the latest buffered logs from the application's `stdout`.
-*   `reload_asset`: Triggers a UDP signal to the Switch to force the engine to re-fetch a file via VFS.
-*   `capture_screen`: Requests a JPEG frame from the current framebuffer (base64).
-*   `backup_save` / `restore_save`: Programmatically manages game save states for regression testing.
-*   `send_input`: Injects virtual button presses (A, B, X, Y, D-Pad, etc.) for automated gameplay testing.
+*   `read_gpu_load` / `read_pmu_counters`: Precision hardware metrics.
+*   `set_breakpoint`: Source-level execution control.
+*   `capture_screen`: Hardware-accelerated visual frame capture.
+*   `reload_asset`: Instant mid-frame asset swapping.
+*   `send_input`: Automated gameplay/UI input injection.
+*   `backup_save` / `restore_save`: Persistent state management.
+*   `get_fleet_status`: Overview of all discovered studio consoles.
 
 ---
 
@@ -94,17 +65,20 @@ Aura-NX exposes the following tools to AI agents:
 
 ### Technical Specifications
 1. [Architecture Overview](docs/01-architecture.md)
-2. [Debugging Protocol (GDB & nxlink)](docs/02-debugging-protocol.md)
-3. [Profiling Engine (GPU & CPU)](docs/03-profiling-engine.md)
-4. [Asset Hot-Reloading (Network VFS)](docs/04-asset-hot-reload.md)
-13. [v2.0.0 Enterprise Architecture](docs/13-v2-architecture.md)
+2. [Debugging Protocol](docs/02-debugging-protocol.md)
+3. [Profiling Engine](docs/03-profiling-engine.md)
+4. [Asset Hot-Reloading](docs/04-asset-hot-reload.md)
+13. [v2.0.0 Architecture Deep-Dive](docs/13-v2-architecture.md)
 
 ### Institutional Standards
 5. [Development Lifecycle](docs/05-development-lifecycle.md)
-6. [Quality Assurance (QA) & Testing](docs/06-quality-assurance.md)
+6. [Quality Assurance & Testing](docs/06-quality-assurance.md)
 7. [Security Posture](docs/07-security-posture.md)
-8. [Release Operations (RelOps)](docs/08-release-ops.md)
-9. [Aura-NX v1.0.0 Roadmap (Advanced QoL)](docs/09-roadmap-v1.md)
+8. [Release Operations](docs/08-release-ops.md)
 10. [Audit Sign-off](docs/10-audit-signoff.md)
 11. [Developer Lifecycle Handbook](docs/11-developer-lifecycle.md)
-12. [Aura-NX v2.0.0 Technical Advisory](docs/12-v2-roadmap.md)
+12. [Technical Advisory](docs/12-v2-roadmap.md)
+
+### Community & AI
+*   [SKILL.md (AI Agent Training)](SKILL.md)
+*   [Contributing](CONTRIBUTING.md) | [Code of Conduct](CODE_OF_CONDUCT.md)

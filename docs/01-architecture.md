@@ -13,13 +13,13 @@ The Aura-NX architecture consists of a PC-side MCP Orchestrator and Switch-side 
     [JSON-RPC over MCP]                        |
          |                                     |
 +--------v----------+                          |   +-------------------+
-| Aura-NX MCP Server| <--- (GDB / Port 22225) ---+ | Atmosphere GDB    |
+| Aura-NX MCP Server| <--- (mTLS / 22225) -----+ | Atmosphere GDB    |
 |   (PC Node.js)    |                          |   +-------------------+
-|                   | <--- (nxlink / 28771) -----+ | libnx app logger  |
+|                   | <--- (mTLS / 28771) -----+ | libnx app logger  |
 | - GDB Manager     |                          |   +-------------------+
-| - Profiler Bridge | <--- (Custom Sysmodule) ---+ | Aura Sysmodule    |
-| - VFS Host        |                          |   +-------------------+
-| - File Watcher    | --- (UDP + TCP devoptab) --> | VFS Client (App)  |
+| - Fleet DB (SQL)  | <--- (mTLS / 12346) -----+ | Aura Sysmodule    |
+| - mTLS CA Layer   |                          |   +-------------------+
+| - VFS Host        | --- (UDP + TCP devoptab) --> | VFS Client (App)  |
 +-------------------+                          +-----------------------+
 ```
 
