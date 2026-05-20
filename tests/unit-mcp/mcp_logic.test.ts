@@ -67,9 +67,7 @@ describe('MCP Server Logic Tests', () => {
   describe('GDB Checksum Calculation', () => {
     it('should calculate correct checksum for a standard breakpoint packet', () => {
       const packetData = 'Z0,0x7100001234,4';
-      // Sum: Z(90)+0(48)+,(44)+0(48)+x(120)+7(55)+1(49)+0(48)+0(48)+0(48)+0(48)+1(49)+2(50)+3(51)+4(52)+,(44)+4(52) = 894
-      // 894 % 256 = 126 (0x7e)
-      expect(calculateChecksum(packetData)).toBe('7e');
+      expect(calculateChecksum(packetData)).toBe('b0');
     });
 
     it('should calculate correct checksum for a simple "g" packet', () => {

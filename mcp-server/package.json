@@ -13,14 +13,14 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
     "axios": "^1.16.1",
     "node-watch": "^0.7.4",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3"
   },
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@types/node": "^25.9.1",
-    "vitest": "^3.0.0"
+    "vitest": "^3.2.4"
   }
 }

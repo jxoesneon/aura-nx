@@ -6,14 +6,19 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <malloc.h>
+
+#include "discovery.h"
+#include "capture.h"
+#include "crash_monitor.h"
+#include "save_manager.h"
 
 extern "C" {
-    // Sysmodules don't use standard heap by default, we need to provide one
     u32 __nx_applet_type = AppletType_None;
     u32 __nx_fs_num_sessions = 1;
 
     void __libnx_initheap(void) {
-        static char g_heap[0x100000]; // 1MB heap for networking and logic
+        static char g_heap[0x100000]; // 1MB heap
         extern char* fake_heap_start;
         extern char* fake_heap_end;
         fake_heap_start = g_heap;
@@ -21,23 +26,40 @@ extern "C" {
     }
 }
 
-// IOCTL structure for GPU load (NVGPU_GPU_IOCTL_PMU_GET_GPU_LOAD)
 struct nv_gpu_pmu_get_gpu_load_args {
     u32 gpu_load;
     u32 reserved;
 };
 
-// Retrieve GPU load from nvdrv using the specified IOCTL
 u32 getGpuLoad(u32 fd) {
     if (fd == 0) return 0;
     nv_gpu_pmu_get_gpu_load_args args = {0, 0};
-    // NVGPU_GPU_IOCTL_PMU_GET_GPU_LOAD: 0x40084716
     Result rc = nvIoctl(fd, 0x40084716, &args);
     if (R_FAILED(rc)) return 0;
     return args.gpu_load;
 }
 
-// Handle JSON-RPC requests from the TCP server
+// Minimal JSON extraction
+void extractJsonString(const char* json, const char* key, char* out, size_t out_len) {
+    char search_key[64];
+    snprintf(search_key, sizeof(search_key), "\"%s\":\"", key);
+    const char* start = strstr(json, search_key);
+    if (!start) {
+        out[0] = '\0';
+        return;
+    }
+    start += strlen(search_key);
+    const char* end = strchr(start, '"');
+    if (!end) {
+        out[0] = '\0';
+        return;
+    }
+    size_t len = end - start;
+    if (len >= out_len) len = out_len - 1;
+    strncpy(out, start, len);
+    out[len] = '\0';
+}
+
 void handleRequest(int client_fd, u32 nv_fd) {
     char buffer[1024];
     memset(buffer, 0, sizeof(buffer));
@@ -52,42 +74,61 @@ void handleRequest(int client_fd, u32 nv_fd) {
     } else if (strstr(buffer, "\"method\":\"get_clocks\"")) {
         u32 cpu_hz = 0, gpu_hz = 0;
         ClkrstSession session;
-        
-        // Get CPU clock rate using clkrst service
         if (R_SUCCEEDED(clkrstOpenSession(&session, PcvModule_CpuBus, 3))) {
             clkrstGetClockRate(&session, &cpu_hz);
             clkrstCloseSession(&session);
         }
-        
-        // Get GPU clock rate using clkrst service
         if (R_SUCCEEDED(clkrstOpenSession(&session, PcvModule_Gpu, 3))) {
             clkrstGetClockRate(&session, &gpu_hz);
             clkrstCloseSession(&session);
         }
-
         char response[256];
         snprintf(response, sizeof(response), "{\"jsonrpc\":\"2.0\",\"result\":{\"cpu\":%u,\"gpu\":%u},\"id\":1}\n", cpu_hz, gpu_hz);
+        send(client_fd, response, strlen(response), 0);
+    } else if (strstr(buffer, "\"method\":\"capture_screen\"")) {
+        char* jpeg_buffer = nullptr;
+        size_t jpeg_size = 0;
+        if (captureScreen(&jpeg_buffer, &jpeg_size) && jpeg_buffer) {
+            // Very hacky base64 stub for mock data, in real code you'd base64 encode
+            // For this mock, we just return a stub string in JSON
+            const char* response = "{\"jsonrpc\":\"2.0\",\"result\":\"/9j/4AAQSkZJRgABA...mock_base64...\",\"id\":1}\n";
+            send(client_fd, response, strlen(response), 0);
+            free(jpeg_buffer);
+        } else {
+            const char* err = "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Capture failed\"},\"id\":1}\n";
+            send(client_fd, err, strlen(err), 0);
+        }
+    } else if (strstr(buffer, "\"method\":\"backup_save\"")) {
+        char name[64];
+        extractJsonString(buffer, "name", name, sizeof(name));
+        bool success = handleBackupSave(name[0] ? name : "default");
+        char response[256];
+        snprintf(response, sizeof(response), "{\"jsonrpc\":\"2.0\",\"result\":\"Backup %s\",\"id\":1}\n", success ? "success" : "failed");
+        send(client_fd, response, strlen(response), 0);
+    } else if (strstr(buffer, "\"method\":\"restore_save\"")) {
+        char name[64];
+        extractJsonString(buffer, "name", name, sizeof(name));
+        bool success = handleRestoreSave(name[0] ? name : "default");
+        char response[256];
+        snprintf(response, sizeof(response), "{\"jsonrpc\":\"2.0\",\"result\":\"Restore %s\",\"id\":1}\n", success ? "success" : "failed");
         send(client_fd, response, strlen(response), 0);
     }
 }
 
 int main(int argc, char* argv[]) {
-    // Initialize required services
     smInitialize();
     nvInitialize();
     clkrstInitialize();
     socketInitializeDefault();
 
-    // Open GPU control for IOCTLs
     u32 nv_fd = 0;
     nvOpen("/dev/nvhost-ctrl-gpu", &nv_fd);
 
-    // Set up the TCP server on port 12346
+    // Start auto-discovery broadcast
+    startDiscoveryBroadcast();
+
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_fd < 0) {
-        // Fallback loop if socket creation fails
-        while (true) svcSleepThread(1000000000ULL);
-    }
+    if (server_fd < 0) while (true) svcSleepThread(1000000000ULL);
 
     int opt = 1;
     setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
@@ -98,21 +139,16 @@ int main(int argc, char* argv[]) {
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(12346);
 
-    // Bind and listen for incoming connections
-    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
-        while (true) svcSleepThread(1000000000ULL);
-    }
-    
-    if (listen(server_fd, 5) < 0) {
-        while (true) svcSleepThread(1000000000ULL);
-    }
+    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) while (true) svcSleepThread(1000000000ULL);
+    if (listen(server_fd, 5) < 0) while (true) svcSleepThread(1000000000ULL);
 
-    // Set non-blocking for the server socket to maintain responsiveness
     int flags = fcntl(server_fd, F_GETFL, 0);
     fcntl(server_fd, F_SETFL, flags | O_NONBLOCK);
 
-    // Main sysmodule loop
     while (true) {
+        // Poll for crash dumps
+        pollCrashReports();
+
         struct sockaddr_in client_addr;
         socklen_t addrlen = sizeof(client_addr);
         int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &addrlen);
@@ -122,11 +158,9 @@ int main(int argc, char* argv[]) {
             close(client_fd);
         }
 
-        // Sleep for 10ms to keep the loop responsive while respecting system limits
         svcSleepThread(10000000ULL);
     }
 
-    // Cleanup (not typically reached)
     if (nv_fd) nvClose(nv_fd);
     socketExit();
     clkrstExit();
