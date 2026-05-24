@@ -1,0 +1,58 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+.nuxt/
+
+# Switch build artifacts
+*.elf
+*.nro
+*.nso
+*.nsp
+*.ovl
+*.o
+*.a
+sysmodule/build_companion/
+sysmodule/build_sysmodule/
+sysmodule/*.elf
+sysmodule/*.nro
+sysmodule/*.nso
+sysmodule/*.nsp
+sysmodule/*.npdm
+
+# OS / Editor
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+Thumbs.db
+
+# Env files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Cache
+.cache/
+.parcel-cache/
+.eslintcache
+
+# Test artifacts
+coverage/
+sysmodule/aura_nx_companion.elf
+sysmodule/aura_nx_sysmodule.elf
+tests/unit-client/vfs_logic
+
+# Session / scratch
+.session_memory.md

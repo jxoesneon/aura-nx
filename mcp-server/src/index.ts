@@ -50,6 +50,143 @@ const server = new Server(
 
 // Global log buffer for nxlink data
 let nxLogBuffer = "";
+let nxlinkUdpBuffer = "";
+
+// Device health state tracking
+interface DeviceState {
+  online: boolean;
+  lastSeen: number;
+  lastError: string | null;
+  errorCount: number;
+  consecutiveFailures: number;
+}
+
+const deviceStates = new Map<string, DeviceState>();
+
+function getDeviceState(ip: string): DeviceState {
+  if (!deviceStates.has(ip)) {
+    deviceStates.set(ip, {
+      online: false,
+      lastSeen: 0,
+      lastError: null,
+      errorCount: 0,
+      consecutiveFailures: 0,
+    });
+  }
+  return deviceStates.get(ip)!;
+}
+
+function markDeviceOnline(ip: string) {
+  const state = getDeviceState(ip);
+  state.online = true;
+  state.lastSeen = Date.now();
+  state.lastError = null;
+  state.consecutiveFailures = 0;
+}
+
+function markDeviceOffline(ip: string, error: string) {
+  const state = getDeviceState(ip);
+  state.online = false;
+  state.lastError = error;
+  state.errorCount++;
+  state.consecutiveFailures++;
+}
+
+function getDeviceStatusText(ip: string): string {
+  const state = getDeviceState(ip);
+  if (state.online) {
+    const ago = Math.round((Date.now() - state.lastSeen) / 1000);
+    return `Online (last seen ${ago}s ago)`;
+  }
+  if (state.lastError) {
+    return `Offline - ${state.lastError} (${state.consecutiveFailures} consecutive failures)`;
+  }
+  return "Offline - never connected";
+}
+
+async function connectWithRetry(
+  ip: string,
+  port: number,
+  data: string,
+  timeoutMs: number = 5000,
+  retries: number = 3
+): Promise<string> {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const result = await new Promise<string>((resolve, reject) => {
+        const client = new net.Socket();
+        let dataReceived = "";
+        let resolved = false;
+
+        client.setTimeout(timeoutMs);
+        client.connect(port, ip, () => {
+          client.write(data);
+        });
+
+        client.on("data", (chunk) => {
+          dataReceived += chunk.toString();
+          if (!resolved) {
+            resolved = true;
+            markDeviceOnline(ip);
+            resolve(dataReceived);
+            client.destroy();
+          }
+        });
+
+        client.on("timeout", () => {
+          client.destroy();
+          reject(new Error(`Timeout after ${timeoutMs}ms`));
+        });
+
+        client.on("error", (err: any) => {
+          client.destroy();
+          reject(err);
+        });
+
+        client.on("close", () => {
+          if (!resolved) {
+            resolved = true;
+            resolve(dataReceived);
+          }
+        });
+      });
+
+      return result;
+    } catch (err: any) {
+      const isLastAttempt = attempt === retries;
+      const diagnostic = classifyConnectionError(err, ip, port);
+
+      if (isLastAttempt) {
+        markDeviceOffline(ip, diagnostic);
+        throw new Error(`Failed after ${retries} attempts: ${diagnostic}`);
+      }
+
+      // Exponential backoff: 500ms, 1000ms, 2000ms
+      const delay = 500 * Math.pow(2, attempt - 1);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+
+  throw new Error("Unexpected retry exhaustion");
+}
+
+function classifyConnectionError(err: any, ip: string, port: number): string {
+  const code = err?.code;
+  switch (code) {
+    case "ECONNREFUSED":
+      return `Connection refused to ${ip}:${port} - sysmodule may have crashed or is not running`;
+    case "ETIMEDOUT":
+    case "TIMEOUT":
+      return `Connection timed out to ${ip}:${port} - device may be rebooting or unreachable`;
+    case "EHOSTUNREACH":
+    case "ENETUNREACH":
+      return `Network unreachable - check that the Switch is on the same network`;
+    case "ECONNRESET":
+      return `Connection reset by peer - device may have rebooted mid-request`;
+    default:
+      return `${err?.message || err} (code: ${code || "unknown"})`;
+  }
+}
 
 /**
  * Broadcasts GDB update to all connected WebSocket clients
@@ -156,6 +293,28 @@ const nxlinkServer = net.createServer((socket) => {
 
 nxlinkServer.listen(NXLINK_PORT, () => {
   console.error(`nxlink listener started on port ${NXLINK_PORT}`);
+});
+
+/**
+ * UDP nxlink listener (Port 28280)
+ * svcOutputDebugString() from sysmodules may send UDP debug packets here.
+ */
+const nxlinkUdpSocket = dgram.createSocket("udp4");
+
+nxlinkUdpSocket.on("message", (msg, rinfo) => {
+  const text = msg.toString("utf8");
+  nxlinkUdpBuffer += `[${rinfo.address}] ${text}\n`;
+  if (nxlinkUdpBuffer.length > 20000) {
+    nxlinkUdpBuffer = nxlinkUdpBuffer.slice(-20000);
+  }
+});
+
+nxlinkUdpSocket.on("error", (err) => {
+  console.error(`[nxlink-udp] Socket error: ${err.message}`);
+});
+
+nxlinkUdpSocket.bind(28280, () => {
+  console.error(`nxlink UDP listener started on port 28280`);
 });
 
 /**
@@ -277,65 +436,23 @@ async function setGdbBreakpoint(address: string, ip: string): Promise<string> {
 }
 
 async function fetchGpuLoad(ip: string): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const client = new net.Socket();
-    let dataReceived = "";
-
-    client.setTimeout(3000);
-    client.connect(SYSMODULE_PORT, ip, () => {
-      client.write(JSON.stringify({ method: "get_gpu_load", id: 1 }));
-    });
-
-    client.on("data", (data) => {
-      dataReceived += data.toString();
-      try {
-        const response = JSON.parse(dataReceived);
-        resolve(response.result?.load ?? response.result?.gpu_load ?? 0);
-        client.destroy();
-      } catch (e) {
-      }
-    });
-
-    client.on("timeout", () => {
-      client.destroy();
-      reject(new Error(`Timeout at ${DEVICE_IP}`));
-    });
-
-    client.on("error", (err: any) => {
-      reject(err);
-    });
-  });
+  const dataReceived = await connectWithRetry(
+    ip, SYSMODULE_PORT,
+    JSON.stringify({ method: "get_gpu_load", id: 1 }),
+    3000, 3
+  );
+  const response = JSON.parse(dataReceived);
+  return response.result?.load ?? response.result?.gpu_load ?? 0;
 }
 
 async function fetchPmuCounters(ip: string): Promise<{ cycles: number }> {
-  return new Promise((resolve, reject) => {
-    const client = new net.Socket();
-    let dataReceived = "";
-
-    client.setTimeout(3000);
-    client.connect(SYSMODULE_PORT, ip, () => {
-      client.write(JSON.stringify({ method: "get_pmu_counters", id: 1 }));
-    });
-
-    client.on("data", (data) => {
-      dataReceived += data.toString();
-      try {
-        const response = JSON.parse(dataReceived);
-        resolve(response.result ?? { cycles: 0 });
-        client.destroy();
-      } catch (e) {
-      }
-    });
-
-    client.on("timeout", () => {
-      client.destroy();
-      reject(new Error(`Timeout at ${DEVICE_IP}`));
-    });
-
-    client.on("error", (err: any) => {
-      reject(err);
-    });
-  });
+  const dataReceived = await connectWithRetry(
+    ip, SYSMODULE_PORT,
+    JSON.stringify({ method: "get_pmu_counters", id: 1 }),
+    3000, 3
+  );
+  const response = JSON.parse(dataReceived);
+  return response.result ?? { cycles: 0 };
 }
 
 async function sendReloadSignal(assetPath: string, ip: string): Promise<void> {
@@ -422,8 +539,19 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "get_nxlink_logs",
-        description: "Retrieve the buffered nxlink logs.",
+        description: "Retrieve the buffered nxlink logs (TCP 28771 + UDP 28280).",
         inputSchema: { type: "object", properties: {} },
+      },
+      {
+        name: "check_device_status",
+        description: "Check if the target Nintendo Switch is reachable and get diagnostic status.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            ip: { type: "string", description: "Target device IP address." },
+            group: { type: "string", description: "Target device group name." },
+          }
+        },
       },
       {
         name: "reload_asset",
@@ -488,6 +616,17 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           },
           required: ["button", "duration"],
         },
+      },
+      {
+        name: "reboot_switch",
+        description: "Reboot the target Nintendo Switch device remotely.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            ip: { type: "string", description: "Target device IP address." },
+            group: { type: "string", description: "Target device group name." },
+          }
+        },
       }
     ],
   };
@@ -518,38 +657,17 @@ async function injectInput(button: string, duration: number, ip: string): Promis
     throw new Error(`Unknown button: ${button}`);
   }
 
-  return new Promise((resolve, reject) => {
-    const client = new net.Socket();
-    let dataReceived = "";
-
-    client.setTimeout(3000);
-    client.connect(SYSMODULE_PORT, ip, () => {
-      client.write(JSON.stringify({ 
-        method: "inject_input", 
-        params: { buttons: buttonValue, duration: duration },
-        id: 1 
-      }));
-    });
-
-    client.on("data", (data) => {
-      dataReceived += data.toString();
-      try {
-        const response = JSON.parse(dataReceived);
-        resolve(response.result ?? "Input injected");
-        client.destroy();
-      } catch (e) {
-      }
-    });
-
-    client.on("timeout", () => {
-      client.destroy();
-      reject(new Error(`Timeout at ${DEVICE_IP}`));
-    });
-
-    client.on("error", (err: any) => {
-      reject(err);
-    });
-  });
+  const dataReceived = await connectWithRetry(
+    ip, SYSMODULE_PORT,
+    JSON.stringify({
+      method: "inject_input",
+      params: { buttons: buttonValue, duration: duration },
+      id: 1
+    }),
+    3000, 3
+  );
+  const response = JSON.parse(dataReceived);
+  return response.result ?? "Input injected";
 }
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
@@ -559,17 +677,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case "read_gpu_load":
       try {
         const load = await fetchGpuLoad(ip);
+        markDeviceOnline(ip);
         return { content: [{ type: "text", text: `GPU Load: ${load}%` }] };
       } catch (error: any) {
-        return { isError: true, content: [{ type: "text", text: `Error: ${error.message}` }] };
+        const diag = classifyConnectionError(error, ip, SYSMODULE_PORT);
+        markDeviceOffline(ip, diag);
+        return { isError: true, content: [{ type: "text", text: `Error: ${diag}` }] };
       }
 
     case "read_pmu_counters":
       try {
         const counters = await fetchPmuCounters(ip);
+        markDeviceOnline(ip);
         return { content: [{ type: "text", text: `PMU Cycles: ${counters.cycles}` }] };
       } catch (error: any) {
-        return { isError: true, content: [{ type: "text", text: `Error: ${error.message}` }] };
+        const diag = classifyConnectionError(error, ip, SYSMODULE_PORT);
+        markDeviceOffline(ip, diag);
+        return { isError: true, content: [{ type: "text", text: `Error: ${diag}` }] };
       }
 
     case "set_breakpoint":
@@ -582,10 +706,53 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return { isError: true, content: [{ type: "text", text: `Error: ${error.message}` }] };
       }
 
-    case "get_nxlink_logs":
+    case "get_nxlink_logs": {
       const logs = nxLogBuffer;
+      const udpLogs = nxlinkUdpBuffer;
       nxLogBuffer = "";
-      return { content: [{ type: "text", text: logs || "No logs available." }] };
+      nxlinkUdpBuffer = "";
+      const combined = [];
+      if (logs) combined.push(`=== TCP nxlink (28771) ===\n${logs}`);
+      if (udpLogs) combined.push(`=== UDP nxlink (28280) ===\n${udpLogs}`);
+      return { content: [{ type: "text", text: combined.join("\n") || "No logs available." }] };
+    }
+
+    case "check_device_status": {
+      const status = getDeviceStatusText(ip);
+      const state = getDeviceState(ip);
+      let details = `Device: ${ip}\nStatus: ${status}\n`;
+      details += `Total errors: ${state.errorCount}\n`;
+      details += `Consecutive failures: ${state.consecutiveFailures}\n`;
+      if (state.lastSeen > 0) {
+        const ago = Math.round((Date.now() - state.lastSeen) / 1000);
+        details += `Last successful contact: ${ago}s ago\n`;
+      }
+      // Quick TCP probe to verify reachability
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const probe = new net.Socket();
+          probe.setTimeout(2000);
+          probe.connect(SYSMODULE_PORT, ip, () => {
+            probe.destroy();
+            resolve();
+          });
+          probe.on("error", (err: any) => {
+            probe.destroy();
+            reject(err);
+          });
+          probe.on("timeout", () => {
+            probe.destroy();
+            reject(new Error("Timeout"));
+          });
+        });
+        details += `TCP probe to ${ip}:${SYSMODULE_PORT}: SUCCESS`;
+        markDeviceOnline(ip);
+      } catch (err: any) {
+        details += `TCP probe to ${ip}:${SYSMODULE_PORT}: FAILED - ${classifyConnectionError(err, ip, SYSMODULE_PORT)}`;
+        markDeviceOffline(ip, classifyConnectionError(err, ip, SYSMODULE_PORT));
+      }
+      return { content: [{ type: "text", text: details }] };
+    }
 
     case "reload_asset":
       try {
@@ -627,15 +794,70 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const button = request.params.arguments?.button as string;
         const duration = request.params.arguments?.duration as number;
         const res = await injectInput(button, duration, ip);
+        markDeviceOnline(ip);
         return { content: [{ type: "text", text: res }] };
       } catch (error: any) {
-        return { isError: true, content: [{ type: "text", text: `Error: ${error.message}` }] };
+        const diag = classifyConnectionError(error, ip, SYSMODULE_PORT);
+        markDeviceOffline(ip, diag);
+        return { isError: true, content: [{ type: "text", text: `Error: ${diag}` }] };
+      }
+
+    case "reboot_switch":
+      try {
+        const res = await rebootSwitch(ip);
+        // After reboot, mark as offline temporarily until it comes back
+        markDeviceOffline(ip, "Device rebooting");
+        return { content: [{ type: "text", text: res }] };
+      } catch (error: any) {
+        const diag = classifyConnectionError(error, ip, SYSMODULE_PORT);
+        markDeviceOffline(ip, diag);
+        return { isError: true, content: [{ type: "text", text: `Error: ${diag}` }] };
       }
 
     default:
       throw new Error("Unknown tool");
   }
 });
+
+async function rebootSwitch(ip: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const client = new net.Socket();
+    let dataReceived = "";
+
+    client.setTimeout(5000);
+    client.connect(SYSMODULE_PORT, ip, () => {
+      client.write(JSON.stringify({
+        method: "reboot",
+        id: 1
+      }));
+    });
+
+    client.on("data", (data) => {
+      dataReceived += data.toString();
+      try {
+        const response = JSON.parse(dataReceived);
+        resolve(response.result ?? "Reboot command sent");
+        client.destroy();
+      } catch (e) {
+      }
+    });
+
+    client.on("timeout", () => {
+      client.destroy();
+      // If we timeout, the device might have rebooted before sending response
+      resolve("Reboot command sent (connection closed, device may be rebooting)");
+    });
+
+    client.on("error", (err: any) => {
+      // Connection reset is expected if device reboots immediately
+      if (err.code === "ECONNRESET" || err.code === "EPIPE") {
+        resolve("Reboot command sent (connection reset, device is rebooting)");
+      } else {
+        reject(err);
+      }
+    });
+  });
+}
 
 async function main() {
   // Start the newly added background tasks

@@ -6,208 +6,199 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include <fcntl.h>
-#include <malloc.h>
 
-#include "discovery.h"
-#include "capture.h"
-#include "crash_monitor.h"
-#include "save_manager.h"
-#include "input_injector.h"
-#include "pmu_profiler.h"
+static FILE* g_log = nullptr;
+static bool g_socket_ready = false;
+static int g_server_fd = -1;
+
+static void logmsg(const char* msg) {
+    if (g_log) {
+        fprintf(g_log, "%s\n", msg);
+        fflush(g_log);
+    }
+}
+
+static void logres(const char* label, Result rc) {
+    if (g_log) {
+        fprintf(g_log, "AURA: %s = 0x%08X\n", label, rc);
+        fflush(g_log);
+    }
+}
 
 extern "C" {
     u32 __nx_applet_type = AppletType_None;
     u32 __nx_fs_num_sessions = 1;
 
-    void __libnx_initheap(void) {
-        static char g_heap[0x100000]; // 1MB heap
-        extern char* fake_heap_start;
-        extern char* fake_heap_end;
-        fake_heap_start = g_heap;
-        fake_heap_end   = g_heap + sizeof(g_heap);
+    void __appInit(void) {
+        Result rc;
+
+        rc = smInitialize();
+        if (R_FAILED(rc)) diagAbortWithResult(MAKERESULT(Module_Libnx, LibnxError_InitFail_SM));
+
+        rc = fsInitialize();
+        if (R_FAILED(rc)) {
+            smExit();
+            diagAbortWithResult(MAKERESULT(Module_Libnx, LibnxError_InitFail_FS));
+        }
+
+        fsdevMountSdmc();
+        g_log = fopen("/sdmc:/aura_debug.log", "w");
+        logmsg("=== AURA-NX Stable + Lazy Socket ===");
+
+        rc = setsysInitialize();
+        if (R_SUCCEEDED(rc)) {
+            SetSysFirmwareVersion fw;
+            rc = setsysGetFirmwareVersion(&fw);
+            if (R_SUCCEEDED(rc)) {
+                hosversionSet(MAKEHOSVERSION(fw.major, fw.minor, fw.micro));
+                char buf[128];
+                snprintf(buf, sizeof(buf), "FW %d.%d.%d", fw.major, fw.minor, fw.micro);
+                logmsg(buf);
+            }
+            setsysExit();
+        }
+
+        logmsg("spsmInitialize starting...");
+        rc = spsmInitialize();
+        logres("spsmInitialize", rc);
+        if (R_SUCCEEDED(rc)) {
+            logmsg("spsmInitialize SUCCESS");
+        }
+
+        // NOTE: socketInitialize deferred to main() loop
+        logmsg("__appInit complete - socket deferred");
+        if (g_log) fflush(g_log);
+    }
+
+    void __appExit(void) {
+        if (g_log) {
+            logmsg("__appExit called");
+            fclose(g_log);
+            g_log = nullptr;
+        }
+        if (g_socket_ready) {
+            if (g_server_fd >= 0) close(g_server_fd);
+            socketExit();
+        }
+        spsmExit();
+        fsdevUnmountAll();
+        fsExit();
+        smExit();
     }
 }
 
-struct nv_gpu_pmu_get_gpu_load_args {
-    u32 gpu_load;
-    u32 reserved;
-};
+bool tryInitSocket() {
+    if (g_socket_ready) return true;
 
-u32 getGpuLoad(u32 fd) {
-    if (fd == 0) return 0;
-    nv_gpu_pmu_get_gpu_load_args args = {0, 0};
-    Result rc = nvIoctl(fd, 0x40084716, &args);
-    if (R_FAILED(rc)) return 0;
-    return args.gpu_load;
+    SocketInitConfig cfg = *socketGetDefaultInitConfig();
+    cfg.tcp_tx_buf_size = 0x4000;
+    cfg.tcp_rx_buf_size = 0x4000;
+    cfg.tcp_tx_buf_max_size = 0x8000;
+    cfg.tcp_rx_buf_max_size = 0x8000;
+    cfg.udp_tx_buf_size = 0x1200;
+    cfg.udp_rx_buf_size = 0x5280;
+    cfg.sb_efficiency = 1;
+    cfg.num_bsd_sessions = 1;
+    cfg.bsd_service_type = BsdServiceType_Auto;
+
+    Result rc = socketInitialize(&cfg);
+    if (R_FAILED(rc)) return false;
+
+    int fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (fd < 0) {
+        socketExit();
+        return false;
+    }
+
+    int opt = 1;
+    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = INADDR_ANY;
+    addr.sin_port = htons(12346);
+
+    if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        close(fd);
+        socketExit();
+        return false;
+    }
+
+    if (listen(fd, 5) < 0) {
+        close(fd);
+        socketExit();
+        return false;
+    }
+
+    g_server_fd = fd;
+    g_socket_ready = true;
+    return true;
 }
 
-// Minimal JSON extraction
-void extractJsonString(const char* json, const char* key, char* out, size_t out_len) {
-    char search_key[64];
-    snprintf(search_key, sizeof(search_key), "\"%s\":\"", key);
-    const char* start = strstr(json, search_key);
-    if (!start) {
-        out[0] = '\0';
-        return;
-    }
-    start += strlen(search_key);
-    const char* end = strchr(start, '"');
-    if (!end) {
-        out[0] = '\0';
-        return;
-    }
-    size_t len = end - start;
-    if (len >= out_len) len = out_len - 1;
-    strncpy(out, start, len);
-    out[len] = '\0';
-}
-
-long long extractJsonNumber(const char* json, const char* key) {
-    char search_key[64];
-    snprintf(search_key, sizeof(search_key), "\"%s\":", key);
-    const char* start = strstr(json, search_key);
-    if (!start) return 0;
-    start += strlen(search_key);
+bool jsonMethodIs(const char* json, const char* method) {
+    const char* key = "\"method\"";
+    const char* start = strstr(json, key);
+    if (!start) return false;
+    start += strlen(key);
     while (*start == ' ' || *start == ':' || *start == '"') start++;
-    return atoll(start);
+    size_t method_len = strlen(method);
+    return strncmp(start, method, method_len) == 0 &&
+           (start[method_len] == '"' || start[method_len] == ' ' || start[method_len] == ',');
 }
 
-void handleRequest(int client_fd, u32 nv_fd) {
+void handleRequest(int client_fd) {
     char buffer[1024];
     memset(buffer, 0, sizeof(buffer));
     ssize_t bytes_received = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
     if (bytes_received <= 0) return;
 
-    if (strstr(buffer, "\"method\":\"get_gpu_load\"")) {
-        u32 load = getGpuLoad(nv_fd);
-        char response[256];
-        snprintf(response, sizeof(response), "{\"jsonrpc\":\"2.0\",\"result\":{\"load\":%u},\"id\":1}\n", load);
-        send(client_fd, response, strlen(response), 0);
-    } else if (strstr(buffer, "\"method\":\"get_clocks\"")) {
-        u32 cpu_hz = 0, gpu_hz = 0;
-        ClkrstSession session;
-        if (R_SUCCEEDED(clkrstOpenSession(&session, (PcvModuleId)PcvModule_CpuBus, 3))) {
-            clkrstGetClockRate(&session, &cpu_hz);
-            clkrstCloseSession(&session);
+    if (jsonMethodIs(buffer, "reboot")) {
+        if (g_log) {
+            logmsg("Reboot requested via MCP");
+            fclose(g_log);
+            g_log = nullptr;
         }
-        if (R_SUCCEEDED(clkrstOpenSession(&session, (PcvModuleId)PcvModule_GPU, 3))) {
-            clkrstGetClockRate(&session, &gpu_hz);
-            clkrstCloseSession(&session);
-        }
-        char response[256];
-        snprintf(response, sizeof(response), "{\"jsonrpc\":\"2.0\",\"result\":{\"cpu\":%u,\"gpu\":%u},\"id\":1}\n", cpu_hz, gpu_hz);
+        spsmShutdown(true);
+        const char* response = "{\"jsonrpc\":\"2.0\",\"result\":\"Rebooting...\",\"id\":1}\n";
         send(client_fd, response, strlen(response), 0);
-    } else if (strstr(buffer, "\"method\":\"capture_screen\"")) {
-        char* jpeg_buffer = nullptr;
-        size_t jpeg_size = 0;
-        if (captureScreen(&jpeg_buffer, &jpeg_size) && jpeg_buffer) {
-            // Very hacky base64 stub for mock data, in real code you'd base64 encode
-            // For this mock, we just return a stub string in JSON
-            const char* response = "{\"jsonrpc\":\"2.0\",\"result\":\"/9j/4AAQSkZJRgABA...mock_base64...\",\"id\":1}\n";
-            send(client_fd, response, strlen(response), 0);
-            free(jpeg_buffer);
-        } else {
-            const char* err = "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Capture failed\"},\"id\":1}\n";
-            send(client_fd, err, strlen(err), 0);
-        }
-    } else if (strstr(buffer, "\"method\":\"backup_save\"")) {
-        char name[64];
-        extractJsonString(buffer, "name", name, sizeof(name));
-        bool success = handleBackupSave(name[0] ? name : "default");
-        char response[256];
-        snprintf(response, sizeof(response), "{\"jsonrpc\":\"2.0\",\"result\":\"Backup %s\",\"id\":1}\n", success ? "success" : "failed");
-        send(client_fd, response, strlen(response), 0);
-    } else if (strstr(buffer, "\"method\":\"restore_save\"")) {
-        char name[64];
-        extractJsonString(buffer, "name", name, sizeof(name));
-        bool success = handleRestoreSave(name[0] ? name : "default");
-        char response[256];
-        snprintf(response, sizeof(response), "{\"jsonrpc\":\"2.0\",\"result\":\"Restore %s\",\"id\":1}\n", success ? "success" : "failed");
-        send(client_fd, response, strlen(response), 0);
-    } else if (strstr(buffer, "\"method\":\"inject_input\"")) {
-        u64 buttons = (u64)extractJsonNumber(buffer, "buttons");
-        int duration = (int)extractJsonNumber(buffer, "duration");
-        injectInput(buttons, duration);
-        const char* response = "{\"jsonrpc\":\"2.0\",\"result\":\"Input injected\",\"id\":1}\n";
-        send(client_fd, response, strlen(response), 0);
-    } else if (strstr(buffer, "\"method\":\"get_pmu_counters\"")) {
-        u64 cycles = read_cycle_counter();
-        char response[256];
-        snprintf(response, sizeof(response), "{\"jsonrpc\":\"2.0\",\"result\":{\"cycles\":%lu},\"id\":1}\n", (unsigned long)cycles);
+    } else {
+        const char* response = "{\"jsonrpc\":\"2.0\",\"result\":\"aura-nx-ok\",\"id\":1}\n";
         send(client_fd, response, strlen(response), 0);
     }
 }
 
 int main(int argc, char* argv[]) {
-    smInitialize();
-    nvInitialize();
-    clkrstInitialize();
-    socketInitializeDefault();
-
-    u32 nv_fd = 0;
-    nvOpen(&nv_fd, "/dev/nvhost-ctrl-gpu");
-
-    // Start auto-discovery broadcast
-    startDiscoveryBroadcast();
-
-    // Set up the TCP server on port 12346 with retry logic
-    int server_fd = -1;
-    while (server_fd < 0) {
-        server_fd = socket(AF_INET, SOCK_STREAM, 0);
-        if (server_fd < 0) {
-            svcSleepThread(5000000000ULL); // Retry every 5s
-            continue;
-        }
-
-        int opt = 1;
-        setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-
-        struct sockaddr_in address;
-        memset(&address, 0, sizeof(address));
-        address.sin_family = AF_INET;
-        address.sin_addr.s_addr = INADDR_ANY;
-        address.sin_port = htons(12346);
-
-        if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
-            close(server_fd);
-            server_fd = -1;
-            svcSleepThread(5000000000ULL);
-            continue;
-        }
-        
-        if (listen(server_fd, 5) < 0) {
-            close(server_fd);
-            server_fd = -1;
-            svcSleepThread(5000000000ULL);
-            continue;
-        }
+    if (g_log) {
+        logmsg("main() entered - waiting for socket...");
+        fflush(g_log);
     }
 
-    int flags = fcntl(server_fd, F_GETFL, 0);
-    fcntl(server_fd, F_SETFL, flags | O_NONBLOCK);
+    int attempts = 0;
+    while (!tryInitSocket()) {
+        attempts++;
+        if (attempts % 10 == 0 && g_log) {
+            fprintf(g_log, "Socket retry #%d...\n", attempts);
+            fflush(g_log);
+        }
+        svcSleepThread(1000000000ULL);  // 1 second
+    }
+
+    if (g_log) {
+        fprintf(g_log, "Socket ready after %d attempts!\n", attempts);
+        fflush(g_log);
+    }
 
     while (true) {
-        // Poll for crash dumps
-        pollCrashReports();
-
         struct sockaddr_in client_addr;
         socklen_t addrlen = sizeof(client_addr);
-        int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &addrlen);
-        
+        int client_fd = accept(g_server_fd, (struct sockaddr *)&client_addr, &addrlen);
         if (client_fd >= 0) {
-            handleRequest(client_fd, nv_fd);
+            handleRequest(client_fd);
             close(client_fd);
         }
-
         svcSleepThread(10000000ULL);
     }
-
-    if (nv_fd) nvClose(nv_fd);
-    socketExit();
-    clkrstExit();
-    nvExit();
-    smExit();
 
     return 0;
 }
