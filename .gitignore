@@ -47,6 +47,7 @@ npm-debug.log*
 .cache/
 .parcel-cache/
 .eslintcache
+.fastembed_cache/
 
 # Test artifacts
 coverage/
